@@ -1,0 +1,220 @@
+{
+  "name": "@fungi.computer/inkcap",
+  "version": "0.0.1",
+  "scripts": {
+    "prep": "pnpm --filter \"@fungi.computer/inkcap^...\" --workspace-concurrency=1 run build",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p backend/tsconfig.json --noEmit && tsc -p test/tsconfig.json --noEmit",
+    "lint": "eslint src backend test workbench --max-warnings=0"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@tanstack/react-form": "1.33.2",
+    "@fungi.computer/caps": "0.0.2",
+    "@fungi.computer/agar": "0.1.0",
+    "lucide-react": "0.460.0",
+    "@fungi.computer/stipe": "0.0.1",
+    "@fungi.computer/whistle": "0.0.1",
+    "effect": "4.0.2",
+    "@pierre/trees": "1.0.0-beta.6",
+    "@pierre/diffs": "1.3.6",
+    "@tanstack/react-query": "5.102.8",
+    "zod": "4.4.3",
+    "@fungi.computer/computer": "0.0.1",
+    "@fungi.computer/cairn": "0.0.1"
+  },
+  "devDependencies": {
+    "@fungi.computer/oyster": "0.1.0",
+    "@ladle/react": "5.1.1",
+    "@fungi.computer/capnweb": "0.12.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.2.2",
+    "vite-plugin-singlefile": "2.3.3",
+    "typescript": "5.9.3",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "playwright": "1.62.1",
+    "tsx": "4.23.12",
+    "@tailwindcss/vite": "4.2.1",
+    "jsdom": "29.0.1",
+    "@cloudflare/workers-types": "5.20260828.1",
+    "esbuild": "0.28.2",
+    "vitest": "4.1.11",
+    "@fungi.computer/puffball": "0.0.2",
+    "eslint": "10.9.1",
+    "@types/node": "24.13.3",
+    "@tailwindcss/cli": "4.2.1"
+  },
+  "fungi": {
+    "build": {
+      "stylesheets": [
+        "src/inkcap.css"
+      ],
+      "react": true
+    },
+    "app": {
+      "displayName": "Inkcap",
+      "icon": "inkcap",
+      "capabilities": [
+        "agent.list",
+        "agent.manage",
+        "agent.read",
+        "agent.send",
+        "computer.list",
+        "computer.readFile",
+        "computer.writeFile",
+        "app.storage",
+        "apps.call"
+      ],
+      "calls": [
+        {
+          "appId": "app_bonsai",
+          "methods": [
+            "files.tree",
+            "files.list",
+            "files.read",
+            "commits.list",
+            "rebuildCopies",
+            "files.save",
+            "files.sync",
+            "files.discard"
+          ]
+        }
+      ],
+      "handlers": [
+        "file.open"
+      ],
+      "roles": [
+        "files"
+      ],
+      "commands": [
+        {
+          "id": "new-draft",
+          "title": "New Draft",
+          "category": "File",
+          "description": "Create a new draft in Inkcap",
+          "sigil": "inkcap",
+          "projections": {
+            "bindings": {
+              "values": [
+                "<leader> n"
+              ],
+              "order": 0
+            },
+            "menu": {
+              "order": 0
+            },
+            "palette": {
+              "order": 0
+            }
+          }
+        },
+        {
+          "id": "save",
+          "title": "Save",
+          "category": "File",
+          "description": "Save the focused Inkcap document",
+          "projections": {
+            "bindings": {
+              "values": [
+                "mod+s"
+              ],
+              "order": 1
+            },
+            "menu": {
+              "order": 1
+            },
+            "palette": {
+              "order": 1
+            }
+          }
+        },
+        {
+          "id": "open-file",
+          "title": "Open File",
+          "category": "File",
+          "description": "Open a file handed off by another App",
+          "projections": {
+            "menu": {
+              "order": 2
+            }
+          }
+        }
+      ],
+      "storage": [
+        {
+          "key": "documents-recent",
+          "scopes": [
+            "member"
+          ],
+          "maxBytes": 2048
+        }
+      ],
+      "backend": {
+        "bindings": [
+          {
+            "name": "APP_STORAGE",
+            "operations": [
+              "read",
+              "write"
+            ]
+          },
+          {
+            "name": "COMPUTER",
+            "operations": [
+              "list",
+              "read",
+              "write"
+            ]
+          }
+        ]
+      }
+    },
+    "backendDefinition": "backend/methods.ts"
+  },
+  "description": "Inkcap: edit the files on your Computer, an App for Oyster",
+  "author": "Levi <levi@technomancy.dev>",
+  "type": "module",
+  "exports": {
+    "./backend": "./backend/index.ts",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "files": [
+    "dist",
+    "backend",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fungi-computer/inkcap.git"
+  },
+  "botanical": {
+    "role": "app",
+    "operations": {
+      "lint": "required",
+      "typecheck": "required",
+      "build": "required",
+      "test": "required",
+      "docs": {
+        "status": "not-applicable",
+        "reason": "Private App has no public package documentation"
+      },
+      "pack": {
+        "status": "not-applicable",
+        "reason": "Delivered as captured HTML, not an npm package"
+      },
+      "smoke": {
+        "status": "not-applicable",
+        "reason": "Mounted browser acceptance belongs to the combined App witness"
+      },
+      "stranger": {
+        "status": "not-applicable",
+        "reason": "App consumer uses Agar; no external npm package consumer"
+      }
+    }
+  },
+  "packageManager": "pnpm@11.24.0"
+}
