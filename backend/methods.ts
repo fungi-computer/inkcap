@@ -1,3 +1,4 @@
+import { resultRows } from "@fungi.computer/agar/method-presentation";
 import { recentFilesGill } from "./gills.js";
 import {
   documentIdentitySchema,
@@ -11,6 +12,7 @@ import {
   type DocumentActivityStore,
 } from "./document-activity.js";
 import * as z from "zod";
+import { filesNavigateIntent } from "@fungi.computer/agar/roles/files";
 import type { AppMethodCallContext } from "@fungi.computer/puffball/app-method-runtime";
 import {
   defineAppBackend,
@@ -185,6 +187,26 @@ export const appBackend = defineAppBackend({
       requires: ["computer.writeFile"],
       input: writeInput,
       output: writeReply,
+      present: {
+        rows: resultRows,
+        verb: "wrote",
+        row: ({ output }) =>
+          "error" in output
+            ? {
+                id: "refused",
+                title: "Inkcap could not write the file",
+                detail: output.error,
+                tone: "error",
+              }
+            : {
+                id: output.path,
+                title: `Inkcap wrote ${output.path.split("/").at(-1) ?? output.path}`,
+                detail: `${output.path} · ${String(output.bytes)} bytes`,
+                open: {
+                  params: filesNavigateIntent({ path: output.path }).params,
+                },
+              },
+      },
       handler: async (input, context: InkcapBackendContext, caller) =>
         caller.computerId === null || !context.env.COMPUTER?.write
           ? refusal.parse({ error: "not_granted" })

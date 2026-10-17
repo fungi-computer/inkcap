@@ -37,6 +37,7 @@ function Workbench({
         setCanGoBack(state.canGoBack);
         return Promise.resolve();
       },
+      onActivate: () => () => undefined,
       onBack: (handler) => {
         back.current = handler;
         return () => {
