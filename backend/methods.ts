@@ -26,16 +26,16 @@ import {
   listOutputSchema,
   readBytesInputSchema,
   writeOutputSchema,
-} from "@fungi.computer/computer/operations";
+} from "@fungi.computer/computer-contract";
 export type InkcapBackendContext = {
   activity: DocumentActivityStore;
   documentsChanged(computerId: string, sequence: number): Promise<void>;
   env: {
     APP_STORAGE: Pick<AppStorageWire, "read" | "write">;
-    COMPUTER?: {
-      list?(input: z.output<typeof listInput>): Promise<WhistleJsonValue>;
-      read?(input: z.output<typeof readInput>): Promise<WhistleJsonValue>;
-      write?(input: z.output<typeof writeInput>): Promise<WhistleJsonValue>;
+    COMPUTER: {
+      list(input: z.output<typeof listInput>): Promise<WhistleJsonValue>;
+      read(input: z.output<typeof readInput>): Promise<WhistleJsonValue>;
+      write(input: z.output<typeof writeInput>): Promise<WhistleJsonValue>;
     };
   };
 };
@@ -103,6 +103,19 @@ const refusal = z.union([
 const listReply = z.union([listOutputSchema, refusal]);
 const readReply = z.union([readOutput, refusal]);
 const writeReply = z.union([writeOutputSchema, refusal]);
+// The host always supplies callable bindings; admission is checked on invocation.
+const bindingNotGranted = z.object({ code: z.literal("binding_not_granted") });
+async function computerCall(
+  call: () => Promise<WhistleJsonValue>,
+): Promise<WhistleJsonValue> {
+  try {
+    return await call();
+  } catch (cause) {
+    if (bindingNotGranted.safeParse(cause).success)
+      return { error: "not_granted" };
+    throw cause;
+  }
+}
 async function recordDocument(
   input: z.output<typeof documentIdentitySchema>,
   context: InkcapBackendContext,
@@ -164,9 +177,11 @@ export const appBackend = defineAppBackend({
       input: listInput,
       output: listReply,
       handler: async (input, context: InkcapBackendContext, caller) =>
-        caller.computerId === null || !context.env.COMPUTER?.list
+        caller.computerId === null
           ? refusal.parse({ error: "not_granted" })
-          : listReply.parse(await context.env.COMPUTER.list(input)),
+          : listReply.parse(
+              await computerCall(() => context.env.COMPUTER.list(input)),
+            ),
     }),
     readFile: defineAppMethod({
       description:
@@ -176,9 +191,11 @@ export const appBackend = defineAppBackend({
       input: readInput,
       output: readReply,
       handler: async (input, context: InkcapBackendContext, caller) =>
-        caller.computerId === null || !context.env.COMPUTER?.read
+        caller.computerId === null
           ? refusal.parse({ error: "not_granted" })
-          : readReply.parse(await context.env.COMPUTER.read(input)),
+          : readReply.parse(
+              await computerCall(() => context.env.COMPUTER.read(input)),
+            ),
     }),
     writeFile: defineAppMethod({
       description:
@@ -208,9 +225,11 @@ export const appBackend = defineAppBackend({
               },
       },
       handler: async (input, context: InkcapBackendContext, caller) =>
-        caller.computerId === null || !context.env.COMPUTER?.write
+        caller.computerId === null
           ? refusal.parse({ error: "not_granted" })
-          : writeReply.parse(await context.env.COMPUTER.write(input)),
+          : writeReply.parse(
+              await computerCall(() => context.env.COMPUTER.write(input)),
+            ),
     }),
   },
 });

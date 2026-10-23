@@ -11,7 +11,7 @@ const INKCAP_NEW_DRAFT_COMMAND = {
   category: "File",
   description: "Create a new draft in Inkcap",
   projections: {
-    bindings: { values: ["<leader> n"], order: 0 },
+    bindings: { values: ["<leader>n"], order: 0 },
     menu: { order: 0 },
     palette: { order: 0 },
   },

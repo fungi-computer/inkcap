@@ -1,6 +1,6 @@
 import { defineIdFamily } from "@fungi.computer/cairn";
 import * as z from "zod";
-import { pathSchema } from "@fungi.computer/computer/operations";
+import { pathSchema } from "@fungi.computer/computer-contract";
 
 export const documentIds = defineIdFamily({
   family: "inkcap",
