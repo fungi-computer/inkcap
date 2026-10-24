@@ -25,7 +25,7 @@
     "@fungi.computer/computer-contract": "0.0.1"
   },
   "devDependencies": {
-    "@fungi.computer/oyster": "0.3.0",
+    "@fungi.computer/oyster": "0.3.1",
     "@ladle/react": "5.1.1",
     "@fungi.computer/capnweb": "0.12.0",
     "@vitejs/plugin-react": "6.1.1",
