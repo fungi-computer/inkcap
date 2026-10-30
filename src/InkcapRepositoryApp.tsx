@@ -235,12 +235,16 @@ export function InkcapRepositoryApp({
         </span>
         <Button
           size="sm"
-          variant="ghost"
+          variant="outline"
           onClick={() => {
             setHistoryOpen(true);
           }}
         >
-          <History aria-hidden="true" /> History
+          <History
+            aria-hidden="true"
+            className="size-[var(--stipe-icon-size-sm)]"
+          />{" "}
+          History
         </Button>
       </div>
       {rebuilding > 0 && <LoadingState message="Loading this repository…" />}

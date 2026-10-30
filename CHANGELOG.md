@@ -1,5 +1,19 @@
 # @fungi.computer/inkcap
 
+## 0.2.5
+
+### Patch Changes
+
+- Changes since 0.2.4:
+
+  - fix(inkcap): key the shared repository History control
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.6.0
+  - @fungi.computer/caps@0.5.0
+  - @fungi.computer/computer-contract@0.0.6
+
 ## 0.2.4
 
 ### Patch Changes
