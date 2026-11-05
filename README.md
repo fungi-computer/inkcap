@@ -30,7 +30,7 @@ cancel. On a phone, **Open file explorer** brings the explorer over the editor.
 ## Get it
 
 Inkcap installs with the other starter Apps. On a deployed Oyster (see the
-[Oyster quick start](https://github.com/fungi-computer/oyster#quick-start-deploy-your-own-oyster)),
+[Oyster quick start](https://github.com/fungi-computer/oyster#deploy-to-cloudflare)),
 run:
 
 ```sh

@@ -1,5 +1,13 @@
 # @fungi.computer/inkcap
 
+## 0.3.0
+
+### Minor Changes
+
+- Changes since 0.2.9:
+
+  - feat(front-doors): lead with the local try-it path and an install-now button
+
 ## 0.2.9
 
 ### Patch Changes
