@@ -2,11 +2,16 @@ import type { AppRoot } from "@fungi.computer/agar";
 import { appsCall } from "@fungi.computer/agar/apps";
 import { useAppContext } from "@fungi.computer/agar/react";
 import { Alert } from "@fungi.computer/caps/components/alert";
-import { useCallback } from "react";
+import { lazy, Suspense, useCallback } from "react";
 import { InkcapApp, type InkcapEditorHandle } from "./InkcapApp.js";
-import { InkcapRepositoryApp } from "./InkcapRepositoryApp.js";
+
 import { repositoryLocation } from "./repository-navigation.js";
 import { useEditorSwapGate, type EditorTarget } from "./editor-swap-gate.js";
+
+const InkcapRepositoryApp = lazy(async () => {
+  const module = await import("./InkcapRepositoryApp.js");
+  return { default: module.InkcapRepositoryApp };
+});
 
 export function InkcapEntry({
   app,
@@ -34,14 +39,16 @@ export function InkcapEntry({
 
   if (mounted.kind === "repository" && app !== null)
     return (
-      <InkcapRepositoryApp
-        connection={{ app }}
-        repository={mounted.repository}
-        initialBranch={mounted.initialBranch}
-        initialPath={mounted.initialPath}
-        openRequestId={mounted.openRequestId}
-        onReady={onEditorReady}
-      />
+      <Suspense fallback={null}>
+        <InkcapRepositoryApp
+          connection={{ app }}
+          repository={mounted.repository}
+          initialBranch={mounted.initialBranch}
+          initialPath={mounted.initialPath}
+          openRequestId={mounted.openRequestId}
+          onReady={onEditorReady}
+        />
+      </Suspense>
     );
   return (
     <>

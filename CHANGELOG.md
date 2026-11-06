@@ -1,5 +1,15 @@
 # @fungi.computer/inkcap
 
+## 0.3.1
+
+### Patch Changes
+
+- Changes since 0.3.0:
+
+  - fix(inkcap): defer repository editor until a repository opens
+
+- @fungi.computer/caps@0.7.1
+
 ## 0.3.0
 
 ### Minor Changes
