@@ -228,15 +228,11 @@ body,
   }
 }
 
-.inkcap-tree .inkcap-tree-empty {
-  padding: var(--spacing-md) var(--spacing-sm);
-  background: var(--color-base-100);
-  border: 0;
-  box-shadow: none;
-}
-.inkcap-empty-subtitle {
-  display: block;
+.inkcap-tree .inkcap-tree-note {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
   color: var(--stipe-fg-muted);
+  font-size: var(--text-xs);
 }
 /* The sheet's own header names the files; the tree's heading would repeat it. */
 .inkcap-explorer-dialog .inkcap-tree-toolbar > span:first-child {
@@ -270,7 +266,7 @@ body,
   height: min(60dvh, 32rem);
   min-height: 12rem;
 }
-.inkcap-explorer-dialog .inkcap-tree:has(.inkcap-tree-empty),
+.inkcap-explorer-dialog .inkcap-tree:has(.inkcap-tree-note),
 .inkcap-explorer-dialog .inkcap-access {
   height: auto;
   min-height: 0;

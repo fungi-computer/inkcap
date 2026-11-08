@@ -3,7 +3,6 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { FileTree } from "@pierre/trees/react";
 import type { AppRoot } from "@fungi.computer/agar";
 import { Button } from "@fungi.computer/caps/components/button";
-import { EmptyState } from "@fungi.computer/caps/blocks/empty-state";
 import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import {
   computerWriteFile,
@@ -27,6 +26,7 @@ export function InkcapFileTree({
   onSelectPath,
   creationRequest = null,
   onCreationRequestHandled,
+  onRootEmpty,
 }: {
   app: AppRoot;
   activePath: string | null;
@@ -38,6 +38,8 @@ export function InkcapFileTree({
   /** Open the create dialog from outside the tree, such as the empty editor. */
   creationRequest?: { kind: "file" | "folder"; name?: string } | null;
   onCreationRequestHandled?: () => void;
+  /** Told whether the root folder holds nothing yet, so the editor can say so once. */
+  onRootEmpty?: (empty: boolean) => void;
 }): React.JSX.Element {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const tree = useInkcapTreeModel({
@@ -52,6 +54,10 @@ export function InkcapFileTree({
     },
   });
   const [creation, setCreation] = useState<EntryLocation | null>(null);
+  const rootEmpty = tree.rootEmpty;
+  useEffect(() => {
+    onRootEmpty?.(rootEmpty);
+  }, [onRootEmpty, rootEmpty]);
   const canWrite = app.capabilities.has(computerWriteFile);
 
   function startCreation(kind: "file" | "folder", path: string): void {
@@ -168,14 +174,7 @@ export function InkcapFileTree({
         </span>
       </div>
       {tree.error && <p role="alert">{tree.error}</p>}
-      {tree.rootEmpty ? (
-        <EmptyState
-          className="inkcap-tree-empty"
-          variant="quiet"
-          title="This folder is empty"
-          description="Use New file or New folder above to start."
-        />
-      ) : null}
+      {tree.rootEmpty ? <p className="inkcap-tree-note">Empty folder</p> : null}
       <FileTree
         model={tree.model}
         style={style}

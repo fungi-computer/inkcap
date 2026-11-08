@@ -1,5 +1,13 @@
 # @fungi.computer/inkcap
 
+## 0.7.1
+
+### Patch Changes
+
+- Changes since 0.7.0:
+
+  - fix(inkcap): trim the empty editor to one action, honest copy and one voice
+
 ## 0.7.0
 
 ### Minor Changes

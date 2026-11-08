@@ -1,6 +1,6 @@
 {
   "name": "@fungi.computer/inkcap",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "scripts": {
     "prep": "pnpm --filter \"@fungi.computer/inkcap^...\" --workspace-concurrency=1 run build",
     "build": "vite build",
@@ -26,7 +26,7 @@
     "@fungi.computer/computer-contract": "0.1.0"
   },
   "devDependencies": {
-    "@fungi.computer/oyster": "0.18.1",
+    "@fungi.computer/oyster": "0.18.2",
     "@ladle/react": "5.1.1",
     "@fungi.computer/capnweb": "0.12.0-fungi.0",
     "@vitejs/plugin-react": "6.1.1",

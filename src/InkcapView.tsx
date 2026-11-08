@@ -123,6 +123,7 @@ export function InkcapView({
     model.canList &&
     model.selectedConnection !== null &&
     model.context.computerId !== null;
+  const [folderEmpty, setFolderEmpty] = useState(false);
   const [creationRequest, setCreationRequest] = useState<{
     kind: "file" | "folder";
     name?: string;
@@ -212,6 +213,7 @@ export function InkcapView({
       }}
       onSelectPath={setSelectedTreePath}
       creationRequest={creationRequest}
+      onRootEmpty={setFolderEmpty}
       onCreationRequestHandled={() => {
         setCreationRequest(null);
       }}
@@ -443,21 +445,18 @@ export function InkcapView({
               className="inkcap-empty"
               variant="panel"
               title={
-                canCreateFile
-                  ? "Edit the files on your Computer"
-                  : "Write a draft"
+                !canCreateFile
+                  ? "Write a draft"
+                  : folderEmpty
+                    ? "Start your first file"
+                    : "Edit the files on your Computer"
               }
               description={
-                canCreateFile ? (
-                  <>
-                    <span className="inkcap-empty-subtitle">
-                      A little room to think.
-                    </span>
-                    Open a file from the list, or start a new one.
-                  </>
-                ) : (
-                  "Drafts stay in this window until you save them."
-                )
+                !canCreateFile
+                  ? "Drafts stay in this window until you save them."
+                  : folderEmpty
+                    ? null
+                    : "Open a file from the list, or start a new one."
               }
               primaryAction={
                 canCreateFile
@@ -484,29 +483,18 @@ export function InkcapView({
                   : undefined
               }
               actions={
-                <div className="flex flex-col items-center gap-2">
-                  {canCreateFile ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={model.onNewDraft}
-                    >
-                      New draft
-                    </Button>
-                  ) : null}
+                narrow ? undefined : (
                   <span className="inkcap-shortcut">
                     <span>New draft:</span>
                     {leaderKeys().map((key) => (
-                      <Keycap key={key} size="sm" touch="hide">
+                      <Keycap key={key} size="sm">
                         {key}
                       </Keycap>
                     ))}
                     <span>then</span>
-                    <Keycap size="sm" touch="hide">
-                      N
-                    </Keycap>
+                    <Keycap size="sm">N</Keycap>
                   </span>
-                </div>
+                )
               }
             />
           ) : null}
@@ -564,6 +552,7 @@ function FileTreePane({
   onOpenFile,
   onSelectPath,
   creationRequest,
+  onRootEmpty,
   onCreationRequestHandled,
   onDismissExplorerDialog,
 }: {
@@ -574,6 +563,7 @@ function FileTreePane({
   onOpenFile: (path: string) => void;
   onSelectPath: (path: string) => void;
   creationRequest: { kind: "file" | "folder"; name?: string } | null;
+  onRootEmpty: (empty: boolean) => void;
   onCreationRequestHandled: () => void;
   onDismissExplorerDialog: () => void;
 }): React.JSX.Element {
@@ -651,6 +641,7 @@ function FileTreePane({
         onOpenFile={onOpenFile}
         onSelectPath={onSelectPath}
         creationRequest={creationRequest}
+        onRootEmpty={onRootEmpty}
         onCreationRequestHandled={onCreationRequestHandled}
       />
     </Suspense>
