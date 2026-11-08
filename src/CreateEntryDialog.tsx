@@ -83,7 +83,7 @@ function EntryDialog({
       }}
     >
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="mb-4">
           <DialogTitle>
             New {creation?.kind === "folder" ? "folder" : "file"}
           </DialogTitle>

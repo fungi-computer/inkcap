@@ -255,6 +255,14 @@ export function useInkcapTreeModel({
     path: latest?.path ?? focusedPath,
     next: latest?.nextOffset ?? null,
   };
+  // The root directory was listed in full and holds nothing yet.
+  const rootEmpty = snapshot.listings.some(
+    ({ request, listing }) =>
+      request.path === rootPath &&
+      request.offset === 0 &&
+      listing.entries.length === 0 &&
+      listing.nextOffset === null,
+  );
   const reloadRoot = () => {
     void client.invalidateQueries({
       queryKey: queryKeys.of(app, "tree", version),
@@ -270,6 +278,7 @@ export function useInkcapTreeModel({
       ? "Could not list this directory. Existing files remain available."
       : "",
     busy: snapshot.busy,
+    rootEmpty,
     reloadRoot,
     loadNext,
   };

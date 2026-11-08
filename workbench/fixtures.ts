@@ -1,3 +1,4 @@
+import { toast } from "@fungi.computer/caps/components/toaster";
 import { appMethods } from "@fungi.computer/agar/backend";
 import {
   createCapabilityRegistry,
@@ -325,7 +326,11 @@ export function createInkcapFixture(
       },
       openDesktopSettings: () => Promise.resolve(),
       reportAgentSessionSelection: () => Promise.resolve(),
-      showToast: () => Promise.resolve(),
+      showToast: ({ message, tone }) => {
+        if (tone === "success") toast.success(message);
+        else toast(message);
+        return Promise.resolve();
+      },
     },
     dispose() {
       /* Story state is released on unmount. */

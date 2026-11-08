@@ -812,6 +812,16 @@ export function useInkcapWorkbench({
       if (closing === tab.tabKey && !dirty && !saving) close(tab.tabKey);
     },
     onSaveBinding,
+    onSaved: (name, downloaded) => {
+      void current.current?.app.ui
+        .showToast({
+          message: `${downloaded ? "Downloaded" : "Saved"} ${name}`,
+          tone: "success",
+        })
+        .catch((cause: unknown) => {
+          console.error("Inkcap save toast failed", cause);
+        });
+    },
     onWrite: async (tab, contents, expectedContent) => {
       const selected = tab.connection;
       if (!selected) {

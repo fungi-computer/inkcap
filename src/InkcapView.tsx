@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { FileCode2, FilePlus2, FolderOpen, PanelLeft, X } from "lucide-react";
+import { LoadingState } from "@fungi.computer/caps/blocks/loading-state";
 import { Button } from "@fungi.computer/caps/components/button";
 import { EmptyState } from "@fungi.computer/caps/blocks/empty-state";
 import {
@@ -34,6 +35,7 @@ import { repositoryFilePath } from "@fungi.computer/agar/roles/files";
 import type { FileSaveResult } from "@fungi.computer/agar/roles/files";
 import type { InkcapSaveBinding } from "./commands.js";
 import type { Connection, InkcapContext, Tab } from "./InkcapApp.js";
+import { leaderKeys, leaderText } from "./platform-keys.js";
 
 const FileTab = lazy(async () => {
   const module = await import("./FileTab.js");
@@ -83,6 +85,7 @@ export type InkcapViewModel = {
     tabKey: number,
     binding: InkcapSaveBinding | undefined,
   ) => void;
+  onSaved: (name: string, downloaded: boolean) => void;
   onWrite: (
     tab: Tab,
     contents: string,
@@ -116,7 +119,38 @@ export function InkcapView({
   }, []);
   const [treeLoadRequested, setTreeLoadRequested] = useState(false);
   const [selectedTreePath, setSelectedTreePath] = useState<string | null>(null);
+  const canCreateFile =
+    model.canList &&
+    model.selectedConnection !== null &&
+    model.context.computerId !== null;
+  const [creationRequest, setCreationRequest] = useState<{
+    kind: "file" | "folder";
+  } | null>(null);
   const id = useId();
+  const explorerDirectory = (tab: Tab): string =>
+    selectedTreePath &&
+    model.selectedConnection &&
+    (tab.connection === null || tab.connection === model.selectedConnection)
+      ? directoryForTreePath(selectedTreePath)
+      : tab.path.startsWith("/")
+        ? directoryForTreePath(tab.path)
+        : model.context.projectPath;
+  const downloadsFor = (tab: Tab): boolean => {
+    const target = tab.connection ?? model.selectedConnection;
+    return (
+      !target ||
+      (target.source?.kind !== "repository" &&
+        target.app.context.get().computerId === null)
+    );
+  };
+  const saveAsDirectory = (tab: Tab): string | null => {
+    const target = tab.connection ?? model.selectedConnection;
+    if (!target) return null;
+    const directory = explorerDirectory(tab);
+    return target.source?.kind === "repository"
+      ? directory.replace(/^\/+/u, "") || null
+      : directory;
+  };
   const computer =
     model.sourceLabel ?? model.context.computerName ?? "Computer";
   const dirty = model.tabs.filter((tab) => tab.dirty).length;
@@ -175,6 +209,10 @@ export function InkcapView({
         setFilesOpen(false);
       }}
       onSelectPath={setSelectedTreePath}
+      creationRequest={creationRequest}
+      onCreationRequestHandled={() => {
+        setCreationRequest(null);
+      }}
       onDismissExplorerDialog={() => {
         setFilesOpen(false);
       }}
@@ -208,41 +246,7 @@ export function InkcapView({
         />
       ) : null}
       <div className="inkcap-work" data-explorer={explorer}>
-        {narrow ? (
-          <Dialog open={filesOpen} onOpenChange={setFilesOpen}>
-            <div className="inkcap-explorer-rail">
-              <DialogTrigger
-                render={
-                  <IconButton
-                    size="sm"
-                    icon={<PanelLeft />}
-                    aria-label="Open file explorer"
-                  />
-                }
-              />
-              <DialogContent className="inkcap-explorer-dialog">
-                <DialogHeader>
-                  <DialogTitle>File explorer</DialogTitle>
-                  <DialogDescription>
-                    {`Browse files on ${
-                      model.sourceLabel ??
-                      (!model.selectedConnection ||
-                      model.context.computerId === null
-                        ? "your Computer"
-                        : computer)
-                    }.`}
-                  </DialogDescription>
-                </DialogHeader>
-                {fileTree}
-                <DialogFooter>
-                  <DialogClose render={<Button variant="outline" />}>
-                    Close explorer
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </div>
-          </Dialog>
-        ) : (
+        {narrow ? null : (
           <div
             className="inkcap-explorer"
             id={`${id}-explorer`}
@@ -262,7 +266,41 @@ export function InkcapView({
           }}
         >
           <div className="inkcap-tab-bar">
-            {narrow ? null : (
+            {narrow ? (
+              <Dialog open={filesOpen} onOpenChange={setFilesOpen}>
+                <DialogTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="inkcap-files-button"
+                    >
+                      <PanelLeft aria-hidden="true" /> Files
+                    </Button>
+                  }
+                />
+                <DialogContent className="inkcap-explorer-dialog">
+                  <DialogHeader>
+                    <DialogTitle>Files</DialogTitle>
+                    <DialogDescription>
+                      {`Browse files on ${
+                        model.sourceLabel ??
+                        (!model.selectedConnection ||
+                        model.context.computerId === null
+                          ? "your Computer"
+                          : computer)
+                      }.`}
+                    </DialogDescription>
+                  </DialogHeader>
+                  {fileTree}
+                  <DialogFooter>
+                    <DialogClose render={<Button variant="outline" />}>
+                      Close
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            ) : (
               <IconButton
                 size="xs"
                 variant="ghost"
@@ -314,7 +352,7 @@ export function InkcapView({
               <IconButton
                 icon={<FilePlus2 />}
                 aria-label="New draft"
-                title="New draft (⌘K, then N)"
+                title={`New draft (${leaderText()}, then N)`}
                 onClick={model.onNewDraft}
               />
             </div>
@@ -322,7 +360,13 @@ export function InkcapView({
           {model.tabs.map((tab) => (
             <Suspense
               key={tab.tabKey}
-              fallback={<p role="status">Opening editor…</p>}
+              fallback={
+                <LoadingState
+                  message="Opening editor"
+                  size="sm"
+                  framed={false}
+                />
+              }
             >
               <FileTab
                 activityNotice={
@@ -363,16 +407,11 @@ export function InkcapView({
                         model.onReopen(tab);
                       }
                 }
+                saveAsDirectory={saveAsDirectory(tab)}
+                downloads={downloadsFor(tab)}
+                onSaved={model.onSaved}
                 onSaveAs={async (path, contents) => {
-                  const directory =
-                    selectedTreePath &&
-                    model.selectedConnection &&
-                    (tab.connection === null ||
-                      tab.connection === model.selectedConnection)
-                      ? directoryForTreePath(selectedTreePath)
-                      : tab.path.startsWith("/")
-                        ? directoryForTreePath(tab.path)
-                        : model.context.projectPath;
+                  const directory = explorerDirectory(tab);
                   const acceptedPath =
                     (tab.connection ?? model.selectedConnection)?.source
                       ?.kind === "repository"
@@ -402,19 +441,59 @@ export function InkcapView({
               className="inkcap-empty"
               variant="panel"
               visual={<FileCode2 className="inkcap-empty-icon" />}
-              title="A little room to think."
-              description={`Open a file${model.canList ? " from the explorer" : ""}, or start with a blank page.`}
+              title={
+                canCreateFile
+                  ? "Edit the files on your Computer"
+                  : "Write a draft"
+              }
+              description={
+                canCreateFile ? (
+                  <>
+                    <span className="inkcap-empty-subtitle">
+                      A little room to think.
+                    </span>
+                    Open a file from the list, or start a new one.
+                  </>
+                ) : (
+                  "Drafts stay in this window until you save them."
+                )
+              }
+              primaryAction={
+                canCreateFile
+                  ? {
+                      label: "New file",
+                      onSelect: () => {
+                        setTreeLoadRequested(true);
+                        if (narrow) setFilesOpen(true);
+                        setCreationRequest({ kind: "file" });
+                      },
+                    }
+                  : { label: "New draft", onSelect: model.onNewDraft }
+              }
               actions={
-                <>
-                  <Button size="sm" onClick={model.onNewDraft}>
-                    New draft
-                  </Button>
+                <div className="flex flex-col items-center gap-2">
+                  {canCreateFile ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={model.onNewDraft}
+                    >
+                      New draft
+                    </Button>
+                  ) : null}
                   <span className="inkcap-shortcut">
-                    <Keycap size="sm">{leaderLabel()}</Keycap>
+                    <span>New draft:</span>
+                    {leaderKeys().map((key) => (
+                      <Keycap key={key} size="sm" touch="hide">
+                        {key}
+                      </Keycap>
+                    ))}
                     <span>then</span>
-                    <Keycap size="sm">N</Keycap>
+                    <Keycap size="sm" touch="hide">
+                      N
+                    </Keycap>
                   </span>
-                </>
+                </div>
               }
             />
           ) : null}
@@ -471,6 +550,8 @@ function FileTreePane({
   computer,
   onOpenFile,
   onSelectPath,
+  creationRequest,
+  onCreationRequestHandled,
   onDismissExplorerDialog,
 }: {
   model: InkcapViewModel;
@@ -479,6 +560,8 @@ function FileTreePane({
   computer: string;
   onOpenFile: (path: string) => void;
   onSelectPath: (path: string) => void;
+  creationRequest: { kind: "file" | "folder" } | null;
+  onCreationRequestHandled: () => void;
   onDismissExplorerDialog: () => void;
 }): React.JSX.Element {
   if (
@@ -500,50 +583,45 @@ function FileTreePane({
               : "Files unavailable"
         }
         description={
-          !model.selectedConnection
-            ? "No Computer is attached to this window. You can still write a draft."
-            : model.context.computerId === null
-              ? "No Computer is attached to this window. You can still write a draft."
-              : "File access isn't granted. Your open documents remain available."
+          !model.selectedConnection || model.context.computerId === null
+            ? "Pick a Computer with the Computer picker to browse its files. You can still write a draft."
+            : "File access isn't granted. Your open documents remain available."
         }
         actions={
-          <>
+          model.connection && model.context.computerId === null ? (
             <Button
               className="whitespace-nowrap"
               size="sm"
-              onClick={model.onNewDraft}
+              variant="outline"
+              onClick={() => {
+                onDismissExplorerDialog();
+                model.onChooseComputer();
+              }}
             >
-              New draft
+              Choose Computer
             </Button>
-            {model.connection && model.context.computerId === null && (
-              <Button
-                className="whitespace-nowrap"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  onDismissExplorerDialog();
-                  model.onChooseComputer();
-                }}
-              >
-                Choose Computer
-              </Button>
-            )}
-          </>
+          ) : undefined
         }
       />
     );
   if (!treeLoadRequested)
     return (
-      <aside className="inkcap-tree inkcap-access" role="status">
-        Loading files…
-      </aside>
+      <LoadingState
+        className="inkcap-tree inkcap-access"
+        message="Loading files"
+        size="sm"
+        framed={false}
+      />
     );
   return (
     <Suspense
       fallback={
-        <aside className="inkcap-tree inkcap-access" role="status">
-          Loading files…
-        </aside>
+        <LoadingState
+          className="inkcap-tree inkcap-access"
+          message="Loading files"
+          size="sm"
+          framed={false}
+        />
       }
     >
       <InkcapFileTree
@@ -559,6 +637,8 @@ function FileTreePane({
         }
         onOpenFile={onOpenFile}
         onSelectPath={onSelectPath}
+        creationRequest={creationRequest}
+        onCreationRequestHandled={onCreationRequestHandled}
       />
     </Suspense>
   );
@@ -625,9 +705,4 @@ function UnsavedDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-/** The shell's leader chord as the platform names it; New draft is leader, N. */
-function leaderLabel(): string {
-  return /Mac|iPhone|iPad/u.test(navigator.userAgent) ? "⌘ K" : "Ctrl K";
 }

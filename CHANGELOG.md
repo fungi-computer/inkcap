@@ -1,5 +1,31 @@
 # @fungi.computer/inkcap
 
+## 0.4.0
+
+### Minor Changes
+
+- Changes since 0.3.3:
+
+  - fix(inkcap): the phone files sheet hugs an empty folder
+  - fix(inkcap): quiet explorer empty state, draft copy without a Computer,
+    shortcut as a hint
+  - feat(inkcap): say what it is, one primary, explorer verbs and a Files button
+    on phones
+  - fix(inkcap): download path says download and the saved toast shows in the
+    workbench
+  - fix(inkcap): a draft save opens save-as and every save says saved
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.8.0
+  - @fungi.computer/caps@0.8.0
+  - @fungi.computer/stipe@0.1.1
+  - @fungi.computer/nacre@0.2.3
+  - @fungi.computer/computer-contract@0.0.13
+
 ## 0.3.3
 
 ### Patch Changes

@@ -1,8 +1,9 @@
 import { describeAppError } from "@fungi.computer/agar/errors";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { FileTree } from "@pierre/trees/react";
 import type { AppRoot } from "@fungi.computer/agar";
 import { Button } from "@fungi.computer/caps/components/button";
+import { EmptyState } from "@fungi.computer/caps/blocks/empty-state";
 import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import {
   computerWriteFile,
@@ -24,6 +25,8 @@ export function InkcapFileTree({
   rootPath = "/",
   rootLabel = "Computer",
   onSelectPath,
+  creationRequest = null,
+  onCreationRequestHandled,
 }: {
   app: AppRoot;
   activePath: string | null;
@@ -32,14 +35,21 @@ export function InkcapFileTree({
   rootLabel?: string;
   onOpenFile: (path: string) => void;
   onSelectPath?: (path: string) => void;
+  /** Open the create dialog from outside the tree, such as the empty editor. */
+  creationRequest?: { kind: "file" | "folder" } | null;
+  onCreationRequestHandled?: () => void;
 }): React.JSX.Element {
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const tree = useInkcapTreeModel({
     app,
     rootPath,
     rootLabel,
     activePath,
     onOpenFile,
-    onSelectPath,
+    onSelectPath: (path) => {
+      setSelectedPath(path);
+      onSelectPath?.(path);
+    },
   });
   const [creation, setCreation] = useState<EntryLocation | null>(null);
   const canWrite = app.capabilities.has(computerWriteFile);
@@ -47,6 +57,15 @@ export function InkcapFileTree({
   function startCreation(kind: "file" | "folder", path: string): void {
     setCreation({ kind, directory: directoryForTreePath(path) });
   }
+
+  useEffect(() => {
+    if (!creationRequest) return;
+    setCreation({
+      kind: creationRequest.kind,
+      directory: directoryForTreePath(selectedPath ?? `${rootPath}/`),
+    });
+    onCreationRequestHandled?.();
+  }, [creationRequest, onCreationRequestHandled, rootPath, selectedPath]);
 
   async function createEntry(
     creation: EntryLocation,
@@ -112,17 +131,49 @@ export function InkcapFileTree({
         <span>
           <FolderOpen aria-hidden="true" /> Explorer
         </span>
-        <IconButton
-          icon={<RefreshCw />}
-          aria-label="Refresh files"
-          title="Refresh files"
-          variant="ghost"
-          size="xs"
-          disabled={tree.busy}
-          onClick={tree.reloadRoot}
-        />
+        <span className="inkcap-tree-actions">
+          <IconButton
+            icon={<FilePlus2 />}
+            aria-label="New file"
+            title="New file"
+            variant="ghost"
+            size="xs"
+            disabled={!canWrite}
+            onClick={() => {
+              startCreation("file", selectedPath ?? `${rootPath}/`);
+            }}
+          />
+          <IconButton
+            icon={<FolderPlus />}
+            aria-label="New folder"
+            title="New folder"
+            variant="ghost"
+            size="xs"
+            disabled={!canWrite}
+            onClick={() => {
+              startCreation("folder", selectedPath ?? `${rootPath}/`);
+            }}
+          />
+          <IconButton
+            icon={<RefreshCw />}
+            aria-label="Refresh files"
+            title="Refresh files"
+            variant="ghost"
+            size="xs"
+            disabled={tree.busy}
+            onClick={tree.reloadRoot}
+          />
+        </span>
       </div>
       {tree.error && <p role="alert">{tree.error}</p>}
+      {tree.rootEmpty ? (
+        <EmptyState
+          className="inkcap-tree-empty"
+          variant="quiet"
+          title="This folder is empty"
+          description="Use New file or New folder above to start."
+        />
+      ) : null}
       <FileTree
         model={tree.model}
         style={style}

@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@fungi.computer/caps/components/tooltip";
-import { RefreshCw, Save, SaveAll, Download, X, Info, Eye } from "lucide-react";
+import { RefreshCw, Save, SaveAll, X, Info, Eye } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -31,6 +31,7 @@ import { useForm, useSelector } from "@tanstack/react-form";
 import { FileConflict } from "./FileConflict.js";
 import { useFileDocument, type DocumentTarget } from "./useFileDocument.js";
 import type { InkcapSaveBinding } from "./commands.js";
+import { draftSavePath } from "./tree-path.js";
 import { imageMediaType, isMarkdownPath } from "./read-for-open.js";
 
 export function FileTab({
@@ -55,6 +56,9 @@ export function FileTab({
   readCurrent,
   onStatus,
   onSaveBinding,
+  saveAsDirectory,
+  downloads = false,
+  onSaved,
   syncConflict = false,
 }: {
   path: string;
@@ -77,6 +81,12 @@ export function FileTab({
   overwrite: (contents: string) => Promise<void>;
   readCurrent: (reload: boolean) => Promise<string>;
   syncConflict?: boolean;
+  /** The explorer directory a draft's Save As starts in, when there is one. */
+  saveAsDirectory?: string | null;
+  /** With no Computer, Save As hands the file to the browser as a download. */
+  downloads?: boolean;
+  /** Told the file name after every save, for the host toast. */
+  onSaved?: (name: string, downloaded: boolean) => void;
   onStatus: (dirty: boolean, saving: boolean) => void;
   onSaveBinding: (
     tabKey: number,
@@ -106,18 +116,51 @@ export function FileTab({
     syncConflict,
   });
   const saveRef = useRef(document.save);
+  const localRef = useRef(local);
+  const pathRef = useRef(document.currentPath);
+  const onSavedRef = useRef(onSaved);
+  const downloadsRef = useRef(downloads);
   const dirtyRef = useRef(document.dirty);
   const savingRef = useRef(document.saving);
   const savableRef = useRef(savable);
   const closedRef = useRef(false);
   saveRef.current = document.save;
+  localRef.current = local;
+  pathRef.current = document.currentPath;
+  onSavedRef.current = onSaved;
+  downloadsRef.current = downloads;
   dirtyRef.current = document.dirty;
   savingRef.current = document.saving;
   savableRef.current = savable && !document.conflict && !document.resolving;
   closedRef.current = target?.closed ?? false;
+  const saveAndAnnounce = async (): Promise<boolean> => {
+    if (localRef.current) {
+      setSaveAsOpen(true);
+      return true;
+    }
+    const saved = await saveRef.current();
+    if (saved)
+      onSavedRef.current?.(leafOf(pathRef.current), downloadsRef.current);
+    return saved;
+  };
+  const saveAsAndAnnounce = async (nextPath: string): Promise<boolean> => {
+    const saved = await document.saveAs(nextPath);
+    if (saved) onSavedRef.current?.(leafOf(nextPath), downloadsRef.current);
+    return saved;
+  };
   const saveBinding = useMemo<InkcapSaveBinding>(
     () => ({
       availability: () => {
+        // A draft has no file yet, so Save asks where to put it.
+        if (localRef.current)
+          return closedRef.current
+            ? { status: "unavailable", reason: "This draft is closed." }
+            : (target?.saving ?? savingRef.current)
+              ? {
+                  status: "unavailable",
+                  reason: "A save is already running.",
+                }
+              : { status: "available" };
         const dirty = target?.dirty ?? dirtyRef.current;
         const saving = target?.saving ?? savingRef.current;
         if (closedRef.current || !savableRef.current || !dirty)
@@ -132,7 +175,7 @@ export function FileTab({
           };
         return { status: "available" };
       },
-      save: () => saveRef.current(),
+      save: () => saveAndAnnounce(),
     }),
     [],
   );
@@ -175,6 +218,10 @@ export function FileTab({
       previewUrl={previewUrl}
       previewKind={previewKind}
       onSaveAs={onSaveAs}
+      onSave={saveAndAnnounce}
+      onSubmitSaveAs={saveAsAndAnnounce}
+      saveAsDirectory={downloads ? null : (saveAsDirectory ?? null)}
+      downloads={downloads}
       onReopen={onReopen}
       document={document}
       file={file}
@@ -204,6 +251,10 @@ function FileTabLayout({
   previewUrl,
   previewKind,
   onSaveAs,
+  onSave,
+  onSubmitSaveAs,
+  saveAsDirectory,
+  downloads,
   onReopen,
   document,
   file,
@@ -227,6 +278,10 @@ function FileTabLayout({
   previewUrl?: string;
   previewKind?: "image" | "video";
   onSaveAs?: (path: string, contents: string) => Promise<string>;
+  onSave: () => Promise<boolean>;
+  onSubmitSaveAs: (path: string) => Promise<boolean>;
+  saveAsDirectory: string | null;
+  downloads: boolean;
   onReopen?: () => void;
   document: ReturnType<typeof useFileDocument>;
   file: { name: string; contents: string };
@@ -261,7 +316,7 @@ function FileTabLayout({
         markdownPreview={markdownPreview}
         onToggleMarkdownPreview={onToggleMarkdownPreview}
         onSave={() => {
-          void document.save().catch((cause: unknown) => {
+          void onSave().catch((cause: unknown) => {
             console.error("Inkcap save failed", cause);
             return undefined;
           });
@@ -305,10 +360,20 @@ function FileTabLayout({
       <SaveAsDialog
         sourceLabel={sourceLabel}
         error={document.error}
-        path={document.currentPath}
+        path={
+          local
+            ? draftSavePath(
+                saveAsDirectory,
+                document.currentPath,
+                document.contents,
+              )
+            : document.currentPath
+        }
+        selectName={local}
+        downloads={downloads}
         open={saveAsOpen}
         busy={document.saving}
-        onSubmit={document.saveAs}
+        onSubmit={onSubmitSaveAs}
         onOpenChange={setSaveAsOpen}
       />
     </TabsContent>
@@ -378,10 +443,10 @@ function FileToolbar({
       <IconButton
         variant="ghost"
         size="xs"
-        icon={local ? <Download /> : <Save />}
+        icon={<Save />}
         aria-label={saveLabel(local, dirty, saving)}
         title={saveLabel(local, dirty, saving)}
-        disabled={!savable || !dirty || saving}
+        disabled={!savable || (!local && !dirty) || saving}
         onClick={onSave}
         result={outcome}
       />
@@ -445,9 +510,20 @@ function FileToolbar({
 }
 
 function saveLabel(local: boolean, dirty: boolean, saving: boolean): string {
-  if (saving) return local ? "Downloading…" : "Saving…";
-  if (dirty) return local ? "Download" : "Save";
-  return local ? "Download ready" : "Saved";
+  if (saving) return "Saving…";
+  return local || dirty ? "Save" : "Saved";
+}
+
+/** The file name of a path, for the saved-name toast. */
+function leafOf(path: string): string {
+  return path.trim().split("/").at(-1) ?? path;
+}
+
+/** The part of a path to select: after the last slash, before the extension. */
+function nameRange(path: string): [number, number] {
+  const start = path.lastIndexOf("/") + 1;
+  const dot = path.lastIndexOf(".");
+  return [start, dot > start ? dot : path.length];
 }
 
 function FileContent({
@@ -569,6 +645,8 @@ function SaveAsDialog({
   sourceLabel,
   error,
   path,
+  selectName,
+  downloads,
   open,
   busy,
   onSubmit,
@@ -577,6 +655,9 @@ function SaveAsDialog({
   sourceLabel?: string;
   error: string;
   path: string;
+  /** Select the file name, not the directory or extension, when focused. */
+  selectName: boolean;
+  downloads: boolean;
   open: boolean;
   busy: boolean;
   onSubmit: (path: string) => Promise<boolean>;
@@ -603,15 +684,17 @@ function SaveAsDialog({
       }}
     >
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Save file as</DialogTitle>
+        <DialogHeader className="mb-4">
+          <DialogTitle>{downloads ? "Download file" : "Save file"}</DialogTitle>
           <DialogDescription>
-            {sourceLabel
-              ? `Choose a relative repository path in ${sourceLabel}.`
-              : "Choose the Computer path for this document."}
+            {downloads
+              ? "Choose a name for the file. It goes to your Downloads folder."
+              : sourceLabel
+                ? `Choose a path in ${sourceLabel}.`
+                : "Choose where to save it on your Computer."}
           </DialogDescription>
         </DialogHeader>
-        <div>
+        <div className="space-y-4">
           <form.Field
             name="path"
             validators={{
@@ -625,7 +708,9 @@ function SaveAsDialog({
           >
             {(field) => (
               <Field
-                label="File path"
+                label={
+                  downloads ? "File name" : sourceLabel ? "Path" : "Location"
+                }
                 required
                 error={field.state.meta.errors[0] ?? error}
               >
@@ -645,6 +730,12 @@ function SaveAsDialog({
                     }
                   }}
                   autoFocus
+                  onFocus={(event) => {
+                    if (!selectName) return;
+                    const input = event.currentTarget;
+                    const [start, end] = nameRange(input.value);
+                    input.setSelectionRange(start, end);
+                  }}
                   disabled={formBusy}
                   required
                 />
@@ -660,7 +751,13 @@ function SaveAsDialog({
                 void form.handleSubmit();
               }}
             >
-              {formBusy ? "Saving…" : "Save As"}
+              {downloads
+                ? formBusy
+                  ? "Downloading…"
+                  : "Download"
+                : formBusy
+                  ? "Saving…"
+                  : "Save"}
             </Button>
           </DialogFooter>
         </div>

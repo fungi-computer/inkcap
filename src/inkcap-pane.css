@@ -232,11 +232,38 @@ body,
   }
 }
 
-.inkcap-explorer-rail {
+.inkcap-tree .inkcap-tree-empty {
+  padding: var(--spacing-md) var(--spacing-sm);
+  background: var(--color-base-100);
+  border: 0;
+  box-shadow: none;
+}
+.inkcap-empty-subtitle {
+  display: block;
+  color: var(--stipe-fg-muted);
+}
+/* The sheet's own header names the files; the tree's heading would repeat it. */
+.inkcap-explorer-dialog .inkcap-tree-toolbar > span:first-child {
+  display: none;
+}
+.inkcap-explorer-dialog .inkcap-tree-toolbar {
+  justify-content: flex-end;
+}
+.inkcap-files-button {
   flex: none;
-  padding: var(--spacing-xs);
-  background: var(--color-base-200);
-  border-inline-end: 1px solid var(--color-base-300);
+  align-self: center;
+  margin-inline: var(--spacing-xs);
+}
+.inkcap-tree-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+}
+/* A keyboard hint means nothing on a touch screen. */
+@media (pointer: coarse) {
+  .inkcap-shortcut {
+    display: none;
+  }
 }
 .inkcap-explorer-dialog {
   display: flex;
@@ -246,6 +273,11 @@ body,
 .inkcap-explorer-dialog .inkcap-tree {
   height: min(60dvh, 32rem);
   min-height: 12rem;
+}
+.inkcap-explorer-dialog .inkcap-tree:has(.inkcap-tree-empty),
+.inkcap-explorer-dialog .inkcap-access {
+  height: auto;
+  min-height: 0;
 }
 
 .inkcap-conflict {

@@ -9,6 +9,7 @@ import {
   projectPath,
   type InkcapScenario,
 } from "./fixtures.js";
+import { Toaster } from "@fungi.computer/caps/components/toaster";
 import "./workbench.css";
 
 export default { title: "Inkcap" } satisfies StoryDefault;
@@ -126,6 +127,7 @@ function Workbench({
           changes must stay unsaved.
         </p>
       ) : null}
+      <Toaster />
       <div className="inkcap-study-surface">
         <QueryClientProvider client={queryClient}>
           <InkcapApp
