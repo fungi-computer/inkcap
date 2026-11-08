@@ -1,5 +1,24 @@
 # @fungi.computer/inkcap
 
+## 0.5.0
+
+### Minor Changes
+
+- Changes since 0.4.0:
+
+  - feat(agar): first-run setup facts, openSetup, more permission families
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.9.0
+  - @fungi.computer/caps@0.9.0
+  - @fungi.computer/computer-contract@0.1.0
+  - @fungi.computer/nacre@0.3.0
+
 ## 0.4.0
 
 ### Minor Changes

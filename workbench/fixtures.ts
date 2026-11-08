@@ -324,6 +324,7 @@ export function createInkcapFixture(
       requestBrowserAction: () => {
         throw new Error("Unexpected browser action");
       },
+      openSetup: () => Promise.resolve("unavailable"),
       openDesktopSettings: () => Promise.resolve(),
       reportAgentSessionSelection: () => Promise.resolve(),
       showToast: ({ message, tone }) => {
