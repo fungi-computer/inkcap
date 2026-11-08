@@ -36,7 +36,7 @@ export function InkcapFileTree({
   onOpenFile: (path: string) => void;
   onSelectPath?: (path: string) => void;
   /** Open the create dialog from outside the tree, such as the empty editor. */
-  creationRequest?: { kind: "file" | "folder" } | null;
+  creationRequest?: { kind: "file" | "folder"; name?: string } | null;
   onCreationRequestHandled?: () => void;
 }): React.JSX.Element {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -60,10 +60,12 @@ export function InkcapFileTree({
 
   useEffect(() => {
     if (!creationRequest) return;
-    setCreation({
+    const request: EntryLocation = {
       kind: creationRequest.kind,
       directory: directoryForTreePath(selectedPath ?? `${rootPath}/`),
-    });
+    };
+    if (creationRequest.name !== undefined) request.name = creationRequest.name;
+    setCreation(request);
     onCreationRequestHandled?.();
   }, [creationRequest, onCreationRequestHandled, rootPath, selectedPath]);
 

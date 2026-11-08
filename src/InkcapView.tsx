@@ -125,6 +125,7 @@ export function InkcapView({
     model.context.computerId !== null;
   const [creationRequest, setCreationRequest] = useState<{
     kind: "file" | "folder";
+    name?: string;
   } | null>(null);
   const id = useId();
   const explorerDirectory = (tab: Tab): string =>
@@ -441,7 +442,6 @@ export function InkcapView({
             <EmptyState
               className="inkcap-empty"
               variant="panel"
-              visual={<FileCode2 className="inkcap-empty-icon" />}
               title={
                 canCreateFile
                   ? "Edit the files on your Computer"
@@ -470,6 +470,18 @@ export function InkcapView({
                       },
                     }
                   : { label: "New draft", onSelect: model.onNewDraft }
+              }
+              suggestions={
+                canCreateFile
+                  ? ["notes.md", "todo.md", "ideas.md"].map((name) => ({
+                      label: name,
+                      onSelect: () => {
+                        setTreeLoadRequested(true);
+                        if (narrow) setFilesOpen(true);
+                        setCreationRequest({ kind: "file", name });
+                      },
+                    }))
+                  : undefined
               }
               actions={
                 <div className="flex flex-col items-center gap-2">
@@ -561,7 +573,7 @@ function FileTreePane({
   computer: string;
   onOpenFile: (path: string) => void;
   onSelectPath: (path: string) => void;
-  creationRequest: { kind: "file" | "folder" } | null;
+  creationRequest: { kind: "file" | "folder"; name?: string } | null;
   onCreationRequestHandled: () => void;
   onDismissExplorerDialog: () => void;
 }): React.JSX.Element {

@@ -206,10 +206,6 @@ body,
   width: min(100% - 2 * var(--spacing-lg), 26rem);
   margin-block: auto;
 }
-/* The New draft key is the one accent here, so the emblem stays quiet. */
-.inkcap-empty-icon {
-  color: var(--stipe-fg-muted);
-}
 .inkcap-shortcut {
   display: inline-flex;
   align-items: center;

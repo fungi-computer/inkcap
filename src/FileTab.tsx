@@ -194,13 +194,13 @@ export function FileTab({
   >(
     () => ({
       onAttach: (editor) => {
-        if (local && active) editor.focus({ lineNumber: 1, character: 0 });
+        if (active) editor.focus({ lineNumber: 1, character: 0 });
       },
       onChange: (next) => {
         document.edit(next.contents);
       },
     }),
-    [document.edit, local, active],
+    [document.edit, active],
   );
 
   const canPreviewMarkdown = isMarkdownPath(document.currentPath);

@@ -15,7 +15,12 @@ import {
   useSchemaFormStatus,
 } from "@fungi.computer/caps/form";
 
-export type EntryLocation = { kind: "file" | "folder"; directory: string };
+/** Where a new entry goes, and a suggested name to start from. */
+export type EntryLocation = {
+  kind: "file" | "folder";
+  directory: string;
+  name?: string;
+};
 const entryName = Schema.Trim.check(
   Schema.isPattern(/^(?!\.{1,2}$)[^/]+$/u, {
     message: "Enter a single file or folder name.",
@@ -45,7 +50,7 @@ export function CreateEntryDialog(props: CreateEntryDialogProps) {
     <EntryDialog
       key={
         props.creation
-          ? `${props.creation.kind}:${props.creation.directory}`
+          ? `${props.creation.kind}:${props.creation.directory}:${props.creation.name ?? ""}`
           : "closed"
       }
       {...props}
@@ -61,7 +66,7 @@ function EntryDialog({
 }: CreateEntryDialogProps) {
   const model = useSchemaForm({
     schema: entryFields[creation?.kind ?? "file"],
-    defaultValues: { name: "" },
+    defaultValues: { name: creation?.name ?? "" },
     onSubmit: async (value) => {
       if (!creation) return undefined;
       const failure = await onCreate(creation, value.name);

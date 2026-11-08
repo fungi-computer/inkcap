@@ -1,6 +1,6 @@
 {
   "name": "@fungi.computer/inkcap",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "scripts": {
     "prep": "pnpm --filter \"@fungi.computer/inkcap^...\" --workspace-concurrency=1 run build",
     "build": "vite build",

@@ -1,5 +1,15 @@
 # @fungi.computer/inkcap
 
+## 0.7.0
+
+### Minor Changes
+
+- Changes since 0.6.1:
+
+  - feat(inkcap): the empty editor suggests file names and uses the living blobs
+  - fix(inkcap): a new file takes the first keystroke and the workbench proof
+    follows the new copy
+
 ## 0.6.1
 
 ### Patch Changes
