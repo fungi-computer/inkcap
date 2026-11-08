@@ -1,5 +1,21 @@
 # @fungi.computer/inkcap
 
+## 0.6.0
+
+### Minor Changes
+
+- Changes since 0.5.0:
+
+  - feat(tourtois): window loading, failure card, priority and Choose Computer
+    chip
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/caps@0.10.0
+  - @fungi.computer/nacre@0.4.0
+
 ## 0.5.0
 
 ### Minor Changes

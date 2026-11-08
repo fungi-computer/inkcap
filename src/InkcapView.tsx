@@ -159,6 +159,7 @@ export function InkcapView({
     {
       kind: "text",
       id: "documents",
+      priority: "low",
       text: `${String(model.tabs.length)} ${model.tabs.length === 1 ? "open file" : "open files"}`,
     },
     {
