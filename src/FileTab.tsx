@@ -124,6 +124,20 @@ export function FileTab({
   const savingRef = useRef(document.saving);
   const savableRef = useRef(savable);
   const closedRef = useRef(false);
+  // The editor reports a change a moment after the keystroke; Save must not
+  // outrun it, so it asks the editor for its live text first.
+  const editorRef = useRef<{
+    getFile(): { contents: string } | undefined;
+  } | null>(null);
+  const focusedRef = useRef(false);
+  const editRef = useRef(document.edit);
+  const contentsRef = useRef(document.contents);
+  editRef.current = document.edit;
+  contentsRef.current = document.contents;
+  const pendingText = (): string | null => {
+    const live = editorRef.current?.getFile()?.contents;
+    return live !== undefined && live !== contentsRef.current ? live : null;
+  };
   saveRef.current = document.save;
   localRef.current = local;
   pathRef.current = document.currentPath;
@@ -138,6 +152,8 @@ export function FileTab({
       setSaveAsOpen(true);
       return true;
     }
+    const pending = pendingText();
+    if (pending !== null) editRef.current(pending);
     const saved = await saveRef.current();
     if (saved)
       onSavedRef.current?.(leafOf(pathRef.current), downloadsRef.current);
@@ -161,7 +177,8 @@ export function FileTab({
                   reason: "A save is already running.",
                 }
               : { status: "available" };
-        const dirty = target?.dirty ?? dirtyRef.current;
+        const dirty =
+          (target?.dirty ?? dirtyRef.current) || pendingText() !== null;
         const saving = target?.saving ?? savingRef.current;
         if (closedRef.current || !savableRef.current || !dirty)
           return {
@@ -194,13 +211,19 @@ export function FileTab({
   >(
     () => ({
       onAttach: (editor) => {
-        if (active) editor.focus({ lineNumber: 1, character: 0 });
+        editorRef.current = editor;
+        // Focus once when the tab opens. Options are rebuilt on every edit, and
+        // focusing again would put the caret back at the first line.
+        if (active && !focusedRef.current) {
+          focusedRef.current = true;
+          editor.focus({ lineNumber: 1, character: 0 });
+        }
       },
       onChange: (next) => {
-        document.edit(next.contents);
+        editRef.current(next.contents);
       },
     }),
-    [document.edit, active],
+    [active],
   );
 
   const canPreviewMarkdown = isMarkdownPath(document.currentPath);

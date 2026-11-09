@@ -127,6 +127,7 @@ export function InkcapView({
   const [creationRequest, setCreationRequest] = useState<{
     kind: "file" | "folder";
     name?: string;
+    immediate?: boolean;
   } | null>(null);
   const id = useId();
   const explorerDirectory = (tab: Tab): string =>
@@ -449,14 +450,14 @@ export function InkcapView({
                   ? "Write a draft"
                   : folderEmpty
                     ? "Start your first file"
-                    : "Edit the files on your Computer"
+                    : "Edit your files"
               }
               description={
                 !canCreateFile
                   ? "Drafts stay in this window until you save them."
                   : folderEmpty
                     ? null
-                    : "Open a file from the list, or start a new one."
+                    : "Open one from the list, or start a new one."
               }
               primaryAction={
                 canCreateFile
@@ -477,7 +478,11 @@ export function InkcapView({
                       onSelect: () => {
                         setTreeLoadRequested(true);
                         if (narrow) setFilesOpen(true);
-                        setCreationRequest({ kind: "file", name });
+                        setCreationRequest({
+                          kind: "file",
+                          name,
+                          immediate: true,
+                        });
                       },
                     }))
                   : undefined
@@ -562,7 +567,11 @@ function FileTreePane({
   computer: string;
   onOpenFile: (path: string) => void;
   onSelectPath: (path: string) => void;
-  creationRequest: { kind: "file" | "folder"; name?: string } | null;
+  creationRequest: {
+    kind: "file" | "folder";
+    name?: string;
+    immediate?: boolean;
+  } | null;
   onRootEmpty: (empty: boolean) => void;
   onCreationRequestHandled: () => void;
   onDismissExplorerDialog: () => void;

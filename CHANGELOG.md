@@ -1,5 +1,19 @@
 # @fungi.computer/inkcap
 
+## 0.8.0
+
+### Minor Changes
+
+- Changes since 0.7.1:
+
+  - feat(inkcap): suggested names create files at once and Save flushes live
+    text
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/nacre@0.4.2
+
 ## 0.7.1
 
 ### Patch Changes

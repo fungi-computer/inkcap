@@ -17,6 +17,8 @@ import {
 import { directoryForTreePath, resolveComputerPath } from "./tree-path.js";
 import { CreateEntryDialog, type EntryLocation } from "./CreateEntryDialog.js";
 
+const nameTaken = "That name already exists in this directory.";
+
 export function InkcapFileTree({
   app,
   onOpenFile,
@@ -36,7 +38,12 @@ export function InkcapFileTree({
   onOpenFile: (path: string) => void;
   onSelectPath?: (path: string) => void;
   /** Open the create dialog from outside the tree, such as the empty editor. */
-  creationRequest?: { kind: "file" | "folder"; name?: string } | null;
+  creationRequest?: {
+    kind: "file" | "folder";
+    name?: string;
+    /** Create the named entry now instead of asking for its name. */
+    immediate?: boolean;
+  } | null;
   onCreationRequestHandled?: () => void;
   /** Told whether the root folder holds nothing yet, so the editor can say so once. */
   onRootEmpty?: (empty: boolean) => void;
@@ -71,9 +78,25 @@ export function InkcapFileTree({
       directory: directoryForTreePath(selectedPath ?? `${rootPath}/`),
     };
     if (creationRequest.name !== undefined) request.name = creationRequest.name;
-    setCreation(request);
+    if (
+      creationRequest.immediate === true &&
+      creationRequest.name !== undefined
+    )
+      void createNow(request, creationRequest.name);
+    else setCreation(request);
     onCreationRequestHandled?.();
   }, [creationRequest, onCreationRequestHandled, rootPath, selectedPath]);
+
+  /** A suggestion creates its file at once, or opens the one already there. */
+  async function createNow(
+    request: EntryLocation,
+    entryName: string,
+  ): Promise<void> {
+    const failure = await createEntry(request, entryName);
+    if (failure === nameTaken)
+      onOpenFile(resolveComputerPath(entryName, request.directory));
+    else if (failure !== undefined) setCreation(request);
+  }
 
   async function createEntry(
     creation: EntryLocation,
@@ -90,7 +113,7 @@ export function InkcapFileTree({
           offset: requestedOffset,
         });
         if (page.entries.some((entry) => entry.name === entryName)) {
-          return "That name already exists in this directory.";
+          return nameTaken;
         }
         if (page.nextOffset !== null && page.nextOffset <= requestedOffset) {
           return "Could not verify that name is available.";
