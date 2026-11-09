@@ -120,16 +120,16 @@ export function FileTab({
   const pathRef = useRef(document.currentPath);
   const onSavedRef = useRef(onSaved);
   const downloadsRef = useRef(downloads);
-  const dirtyRef = useRef(document.dirty);
   const savingRef = useRef(document.saving);
   const savableRef = useRef(savable);
   const closedRef = useRef(false);
-  // The editor reports a change a moment after the keystroke; Save must not
-  // outrun it, so it asks the editor for its live text first.
-  const editorRef = useRef<{
-    getFile(): { contents: string } | undefined;
-  } | null>(null);
-  const focusedRef = useRef(false);
+  // Read the editor at Save time so the write uses the live document.
+  const editorRef = useRef<Editor<unknown> | null>(null);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  useEffect(() => {
+    if (active) editorRef.current?.focus();
+  }, [active]);
   const editRef = useRef(document.edit);
   const contentsRef = useRef(document.contents);
   editRef.current = document.edit;
@@ -143,7 +143,6 @@ export function FileTab({
   pathRef.current = document.currentPath;
   onSavedRef.current = onSaved;
   downloadsRef.current = downloads;
-  dirtyRef.current = document.dirty;
   savingRef.current = document.saving;
   savableRef.current = savable && !document.conflict && !document.resolving;
   closedRef.current = target?.closed ?? false;
@@ -177,13 +176,11 @@ export function FileTab({
                   reason: "A save is already running.",
                 }
               : { status: "available" };
-        const dirty =
-          (target?.dirty ?? dirtyRef.current) || pendingText() !== null;
         const saving = target?.saving ?? savingRef.current;
-        if (closedRef.current || !savableRef.current || !dirty)
+        if (closedRef.current || !savableRef.current)
           return {
             status: "unavailable",
-            reason: "No focused savable dirty document.",
+            reason: "No focused savable document.",
           };
         if (saving)
           return {
@@ -212,18 +209,14 @@ export function FileTab({
     () => ({
       onAttach: (editor) => {
         editorRef.current = editor;
-        // Focus once when the tab opens. Options are rebuilt on every edit, and
-        // focusing again would put the caret back at the first line.
-        if (active && !focusedRef.current) {
-          focusedRef.current = true;
-          editor.focus({ lineNumber: 1, character: 0 });
-        }
+        // Initialize a new editor once; tab activation preserves its selection.
+        if (activeRef.current) editor.focus({ lineNumber: 1, character: 0 });
       },
       onChange: (next) => {
         editRef.current(next.contents);
       },
     }),
-    [active],
+    [],
   );
 
   const canPreviewMarkdown = isMarkdownPath(document.currentPath);

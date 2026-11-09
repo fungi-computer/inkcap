@@ -1,5 +1,13 @@
 # @fungi.computer/inkcap
 
+## 0.8.1
+
+### Patch Changes
+
+- Changes since 0.8.0:
+
+  - fix(inkcap): preserve typing and save the live document
+
 ## 0.8.0
 
 ### Minor Changes

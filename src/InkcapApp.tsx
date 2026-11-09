@@ -276,6 +276,7 @@ export function useInkcapWorkbench({
   const current = useRef(connection);
   const activeRef = useRef<number | null>(null);
   const saveBindings = useRef(new Map<number, InkcapSaveBinding>());
+  const [, setSaveBindingRevision] = useState(0);
   const openFileRef = useRef<(input: InkcapOpenFileInput) => Promise<void>>(
     () =>
       Promise.reject(
@@ -644,6 +645,8 @@ export function useInkcapWorkbench({
     (tabKey: number, binding: InkcapSaveBinding | undefined) => {
       if (binding) saveBindings.current.set(tabKey, binding);
       else saveBindings.current.delete(tabKey);
+      // Publish availability when the editor mounts, before the first edit.
+      setSaveBindingRevision((revision) => revision + 1);
     },
     [],
   );

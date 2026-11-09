@@ -100,13 +100,10 @@ export function useFileDocument({
   }
 
   async function save(): Promise<boolean> {
-    if (
-      busy.current ||
-      conflict ||
-      externalConflict.current ||
-      !isDirty(draft.current)
-    )
-      return false;
+    if (busy.current || conflict || externalConflict.current) return false;
+    // Save stays available while typing, before the host receives dirty status.
+    // An already saved document is a successful no-op.
+    if (!isDirty(draft.current)) return true;
     busy.current = true;
     report(true, true);
     setError("");
