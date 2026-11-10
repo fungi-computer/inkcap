@@ -447,7 +447,7 @@ function FileToolbar({
       {canPreviewMarkdown ? (
         <IconButton
           variant="ghost"
-          size="xs"
+          size="responsive"
           icon={<Eye />}
           aria-label="Preview Markdown"
           title="Preview Markdown"
@@ -458,7 +458,7 @@ function FileToolbar({
       ) : null}
       <IconButton
         variant="ghost"
-        size="xs"
+        size="responsive"
         icon={<Save />}
         aria-label={saveLabel(local, dirty, saving)}
         title={saveLabel(local, dirty, saving)}
@@ -481,7 +481,7 @@ function FileToolbar({
                   icon={<Info />}
                   aria-label="Recent files didn't update"
                   variant="ghost"
-                  size="xs"
+                  size="responsive"
                 />
               </TooltipTrigger>
               <TooltipContent>
@@ -494,7 +494,7 @@ function FileToolbar({
             aria-label="Dismiss Recent Files notice"
             title="Dismiss Recent Files notice"
             variant="ghost"
-            size="xs"
+            size="responsive"
             onClick={onDismissActivityNotice}
           />
         </>
@@ -505,7 +505,7 @@ function FileToolbar({
           aria-label="Save file as"
           title="Save file as"
           variant="ghost"
-          size="xs"
+          size="responsive"
           disabled={!savable || saving}
           onClick={onSaveAs}
         />
@@ -516,7 +516,7 @@ function FileToolbar({
           aria-label="Reload file"
           title="Reload saved file"
           variant="ghost"
-          size="xs"
+          size="responsive"
           disabled={!savable || dirty || saving}
           onClick={onReopen}
         />

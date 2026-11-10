@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appsCall } from "@fungi.computer/agar/apps";
 import { type FileSaveResult } from "@fungi.computer/agar/roles/files";
+import { describeAppError } from "@fungi.computer/agar/errors";
+import { FailureLine } from "@fungi.computer/caps/components/failure-line";
 import { Button } from "@fungi.computer/caps/components/button";
 import { Alert } from "@fungi.computer/caps/components/alert";
 import { LoadingState } from "@fungi.computer/caps/blocks/loading-state";
@@ -27,6 +29,20 @@ import {
 import { bonsaiSnapshot } from "./bonsai-repository.js";
 import { RepositoryTree } from "./RepositoryTree.js";
 import { repositoryKeys } from "./repository-queries.js";
+
+const syncFailureCopy = {
+  branch_missing:
+    "The repository branch no longer exists. Your text is saved; restore the branch before retrying.",
+  access_changed:
+    "Repository access changed. Your text is saved; restore Bonsai's Git access before retrying.",
+  sync_failed:
+    "Git could not publish this change. Your text is saved; retry sync.",
+  permanent_material:
+    "The saved change no longer matches the repository state. Save again to publish your text from the current state.",
+} satisfies Record<
+  Extract<FileSaveResult, { kind: "failed" }>["reason"],
+  string
+>;
 
 export function InkcapRepositoryApp({
   connection,
@@ -192,7 +208,7 @@ export function InkcapRepositoryApp({
     } catch (cause) {
       console.error("Bonsai sync retry failed", cause);
       setActionError(
-        "Could not retry sync. Your saved text remains in Bonsai.",
+        `${describeAppError(cause).message} Your saved text remains in Bonsai.`,
       );
     }
   }
@@ -223,7 +239,7 @@ export function InkcapRepositoryApp({
     } catch (cause) {
       console.error("Bonsai explicit re-save failed", cause);
       setActionError(
-        "Could not save again. Your saved text and open edits remain available.",
+        `${describeAppError(cause).message} Your saved text and open edits remain available.`,
       );
     }
   }
@@ -252,13 +268,14 @@ export function InkcapRepositoryApp({
         <Alert tone="info" title="Only the indexed files are shown" />
       )}
       {actionError && (
-        <Alert
-          tone="error"
-          title="Sync unavailable"
-          description={actionError}
+        <FailureLine
+          message={actionError}
+          onDismiss={() => {
+            setActionError("");
+          }}
         />
       )}
-      {state?.kind === "failed" && (
+      {state?.kind === "failed" && !actionError && (
         <Alert
           tone="warning"
           title={
@@ -266,11 +283,7 @@ export function InkcapRepositoryApp({
               ? "Sync needs a new save"
               : "Sync failed"
           }
-          description={
-            state.reason === "permanent_material"
-              ? "Your text is saved. Save again using the current repository state to retry sync."
-              : "Your file is saved in Bonsai. Retry when access is available."
-          }
+          description={syncFailureCopy[state.reason]}
           action={
             <Button
               size="sm"
@@ -313,10 +326,12 @@ export function InkcapRepositoryApp({
             );
           },
           error: snapshot.error
-            ? "Could not refresh this repository. Your open edits remain available."
+            ? `${describeAppError(snapshot.error).message} Your open edits remain available.`
             : model.error,
-          fileTree: (onOpenFile) => (
+          fileTree: (onOpenFile, narrow) => (
             <RepositoryTree
+              key={narrow ? "phone" : "desktop"}
+              rowHeight={narrow ? 44 : 32}
               files={snapshot.data?.files ?? []}
               dirtyPaths={model.tabs
                 .filter((tab) => tab.connection === selected && tab.dirty)

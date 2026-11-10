@@ -20,14 +20,19 @@ export function PushDuringSave() {
 export function HostWithoutAppCalls() {
   return <RepositoryStudy appCalls={false} />;
 }
+export function SyncFailures() {
+  return <RepositoryStudy failures />;
+}
 function RepositoryStudy({
   holdCommitAcknowledgement = false,
   holdCopyRebuild = false,
   appCalls = true,
+  failures = false,
 }: {
   holdCommitAcknowledgement?: boolean;
   holdCopyRebuild?: boolean;
   appCalls?: boolean;
+  failures?: boolean;
 }) {
   const [client] = useState(createQueryClient);
   const [status, setStatus] = useState<readonly AppStatusItem[]>([]);
@@ -79,6 +84,34 @@ function RepositoryStudy({
           <button onClick={fixture.acknowledgeCommit}>
             Acknowledge the commit
           </button>
+        ) : null}
+        {failures ? (
+          <>
+            {(
+              [
+                "branch_missing",
+                "access_changed",
+                "sync_failed",
+                "permanent_material",
+              ] as const
+            ).map((reason) => (
+              <button
+                key={reason}
+                onClick={() => {
+                  fixture.failSync(reason);
+                }}
+              >
+                Fail {reason}
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                fixture.failSync(null);
+              }}
+            >
+              Restore sync
+            </button>
+          </>
         ) : null}
         <output aria-label="Host window status">
           {status.map((item) => (

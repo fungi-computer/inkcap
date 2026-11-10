@@ -13,6 +13,7 @@ import {
   treeListing,
   readCopyRebuilding,
   type FileSaveInput,
+  type FileSaveResult,
 } from "@fungi.computer/agar/roles/files";
 import type { WhistleJsonValue } from "@fungi.computer/whistle";
 import { Schema } from "effect";
@@ -46,6 +47,8 @@ export function createRepositoryFixture({
   const rows = new Map<string, FileSaveInput & { version: number }>();
   const settled = new Map<string, ReturnType<typeof fileSaveResult.parse>>();
   const calls: string[] = [];
+  let syncFailure:
+    Extract<FileSaveResult, { kind: "failed" }>["reason"] | null = null;
   let head = initialHead;
   let blob = initialBlob;
   let rebuilding = holdCopyRebuild;
@@ -129,8 +132,15 @@ export function createRepositoryFixture({
           result.pending = {
             text: row.text,
             revision: row.version,
-            state: outcome?.kind === "conflict" ? "conflict" : "pending",
+            state:
+              outcome?.kind === "conflict"
+                ? "conflict"
+                : outcome?.kind === "failed"
+                  ? "failed"
+                  : "pending",
           };
+          if (outcome?.kind === "failed")
+            result.pending.failure = outcome.reason;
           if (outcome?.kind === "conflict" && outcome.theirs)
             result.pending.theirs = outcome.theirs;
         }
@@ -157,6 +167,14 @@ export function createRepositoryFixture({
       if (method === "files.sync") {
         await acknowledgement;
         for (const [path, row] of rows) {
+          if (syncFailure) {
+            settled.set(path, {
+              kind: "failed",
+              revision: row.version,
+              reason: syncFailure,
+            });
+            continue;
+          }
           if (row.baseBlob !== blob && files.get(path) !== row.text) {
             settled.set(path, {
               kind: "conflict",
@@ -230,6 +248,11 @@ export function createRepositoryFixture({
   };
   return {
     connection: { app },
+    failSync(
+      reason: Extract<FileSaveResult, { kind: "failed" }>["reason"] | null,
+    ) {
+      syncFailure = reason;
+    },
     /** Bonsai's Edit in Inkcap re-targets the already open window. */
     navigate(path: string) {
       context = navigateTo(`bonsai-open-${path}`, path);

@@ -342,3 +342,11 @@ body,
   padding-block-end: var(--spacing-sm);
   font-size: 0.75rem;
 }
+
+@container (max-width: 640px) {
+  .inkcap-tab-bar,
+  .inkcap-file-toolbar,
+  .inkcap-tree-toolbar {
+    min-height: var(--caps-touch-target);
+  }
+}

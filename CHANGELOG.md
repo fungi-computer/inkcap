@@ -1,5 +1,21 @@
 # @fungi.computer/inkcap
 
+## 0.8.6
+
+### Patch Changes
+
+- Changes since 0.8.5:
+
+  - fix(caps): keep paired empty-state actions explicit
+  - fix(ui): restore consistent first-use empty state panels
+  - fix(inkcap): format repository row height explicitly
+  - fix(inkcap): make file actions usable on phones
+  - fix(inkcap): finish responsive recovery and bundle proof
+  - fix(bonsai): complete first-use flow with Inkcap
+
+- Updated dependencies
+  - @fungi.computer/caps@0.10.4
+
 ## 0.8.5
 
 ### Patch Changes

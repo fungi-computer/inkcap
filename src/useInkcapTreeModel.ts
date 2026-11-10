@@ -12,12 +12,11 @@ import { useFileTree } from "@pierre/trees/react";
 import { FileTree, type FileTreeBatchOperation } from "@pierre/trees";
 import type { AppRoot } from "@fungi.computer/agar";
 import { useComputerId } from "@fungi.computer/agar/react";
-import { capabilityQuery, queryKeys } from "@fungi.computer/agar/query";
+import { directoryQuery } from "./tree-queries.js";
+import { queryKeys } from "@fungi.computer/agar/query";
+import { describeAppError } from "@fungi.computer/agar/errors";
 import * as Redacted from "effect/Redacted";
-import {
-  computerList,
-  type ComputerListing,
-} from "@fungi.computer/agar/computer";
+import { type ComputerListing } from "@fungi.computer/agar/computer";
 
 export const TREE_ROW_HEIGHT_PX = 32;
 
@@ -76,8 +75,10 @@ export function useInkcapTreeModel({
   activePath,
   onOpenFile,
   onSelectPath,
+  rowHeight = TREE_ROW_HEIGHT_PX,
 }: {
   app: AppRoot;
+  rowHeight?: number;
   rootPath: string;
   /** The Computer or workspace's real name, shown on the Explorer root row. */
   rootLabel?: string;
@@ -118,18 +119,7 @@ export function useInkcapTreeModel({
   const key = (path: string, offset: number) =>
     queryKeys.of(app, "tree", version, path, offset);
   const snapshot = useQueries({
-    queries: pages.map(({ path, offset }) =>
-      capabilityQuery(
-        app,
-        computerList,
-        key(path, offset),
-        async (handle, signal) => {
-          const result = await handle.list({ path, offset, limit: 256 });
-          signal.throwIfAborted();
-          return result;
-        },
-      ),
-    ),
+    queries: pages.map(({ path, offset }) => directoryQuery(app, path, offset)),
     combine: (results) => ({
       listings: results.flatMap((result, index) =>
         result.data ? [{ request: pages[index], listing: result.data }] : [],
@@ -165,7 +155,7 @@ export function useInkcapTreeModel({
   loadDirectory.current = requestPage;
   const { model } = useFileTree({
     paths: [],
-    itemHeight: TREE_ROW_HEIGHT_PX,
+    itemHeight: rowHeight,
     initialExpansion: 1,
     composition: { contextMenu: { enabled: true } },
     // Pierre's FileTree model is constructed once; read the live root label
@@ -275,7 +265,7 @@ export function useInkcapTreeModel({
     model,
     page,
     error: snapshot.failure
-      ? "Could not list this directory. Existing files remain available."
+      ? `${describeAppError(snapshot.failure).message} Your open files remain available.`
       : "",
     busy: snapshot.busy,
     rootEmpty,

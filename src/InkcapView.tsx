@@ -1,3 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
+import { describeAppError } from "@fungi.computer/agar/errors";
+import { FailureLine } from "@fungi.computer/caps/components/failure-line";
+import { directoryQuery } from "./tree-queries.js";
+import { computerWriteFile } from "@fungi.computer/agar/computer";
 import {
   Fragment,
   lazy,
@@ -48,7 +53,10 @@ const InkcapFileTree = lazy(async () => {
 });
 
 export type InkcapViewModel = {
-  fileTree?: (onOpenFile: (path: string) => void) => React.ReactNode;
+  fileTree?: (
+    onOpenFile: (path: string) => void,
+    narrow: boolean,
+  ) => React.ReactNode;
   sourceLabel?: string;
   connection: Connection | null;
   selectedConnection: Connection | null;
@@ -119,11 +127,27 @@ export function InkcapView({
   }, []);
   const [treeLoadRequested, setTreeLoadRequested] = useState(false);
   const [selectedTreePath, setSelectedTreePath] = useState<string | null>(null);
+  const canBrowseFiles =
+    model.canList &&
+    model.selectedConnection !== null &&
+    model.context.computerId !== null &&
+    !model.selectedConnection.source;
+  const listing = useQuery(
+    directoryQuery(
+      canBrowseFiles ? (model.selectedConnection?.app ?? null) : null,
+      model.context.projectPath,
+    ),
+  );
+  const savedFiles =
+    listing.data?.entries.filter((entry) => entry.type === "file") ?? [];
+  const savedFile = savedFiles.at(0);
+  const repository = model.selectedConnection?.source?.kind === "repository";
   const canCreateFile =
     model.canList &&
     model.selectedConnection !== null &&
-    model.context.computerId !== null;
-  const [folderEmpty, setFolderEmpty] = useState(false);
+    model.context.computerId !== null &&
+    !model.selectedConnection.source &&
+    model.selectedConnection.app.capabilities.has(computerWriteFile);
   const [creationRequest, setCreationRequest] = useState<{
     kind: "file" | "folder";
     name?: string;
@@ -202,9 +226,10 @@ export function InkcapView({
   const fileTree = model.fileTree?.((path) => {
     model.onOpenFile(path);
     setFilesOpen(false);
-  }) ?? (
+  }, narrow) ?? (
     <FileTreePane
       model={model}
+      narrow={narrow}
       treeLoadRequested={treeLoadRequested}
       active={active}
       computer={computer}
@@ -214,7 +239,6 @@ export function InkcapView({
       }}
       onSelectPath={setSelectedTreePath}
       creationRequest={creationRequest}
-      onRootEmpty={setFolderEmpty}
       onCreationRequestHandled={() => {
         setCreationRequest(null);
       }}
@@ -307,7 +331,7 @@ export function InkcapView({
               </Dialog>
             ) : (
               <IconButton
-                size="xs"
+                size="responsive"
                 variant="ghost"
                 className="inkcap-explorer-toggle"
                 icon={<PanelLeft />}
@@ -342,7 +366,7 @@ export function InkcapView({
                     ) : null}
                   </TabsTrigger>
                   <IconButton
-                    size="xs"
+                    size="responsive"
                     variant="ghost"
                     icon={<X />}
                     aria-label={`Close ${tab.path}`}
@@ -355,6 +379,7 @@ export function InkcapView({
             </TabsList>
             <div className="inkcap-tab-actions">
               <IconButton
+                size="responsive"
                 icon={<FilePlus2 />}
                 aria-label="New draft"
                 title={`New draft (${leaderText()}, then N)`}
@@ -441,54 +466,122 @@ export function InkcapView({
               />
             </Suspense>
           ))}
-          {model.tabs.length === 0 ? (
+          {model.tabs.length === 0 &&
+          listing.isError &&
+          (!explorer || (narrow && !filesOpen)) ? (
+            <FailureLine
+              message={describeAppError(listing.error).message}
+              onRetry={() => {
+                void listing.refetch();
+              }}
+            />
+          ) : model.tabs.length === 0 ? (
             <EmptyState
               className="inkcap-empty"
               variant="panel"
+              visual="blobs"
               title={
-                !canCreateFile
-                  ? "Write a draft"
-                  : folderEmpty
-                    ? "Start your first file"
-                    : "Edit your files"
+                repository
+                  ? "Open a repository file"
+                  : savedFiles.length > 0
+                    ? "Open a saved file"
+                    : !canCreateFile
+                      ? "Write a draft"
+                      : "Start your first file"
               }
               description={
-                !canCreateFile
-                  ? "Drafts stay in this window until you save them."
-                  : folderEmpty
-                    ? null
-                    : "Open one from the list, or start a new one."
+                repository
+                  ? "Browse the repository to choose a file to edit."
+                  : savedFiles.length > 0
+                    ? "Your files are saved here. Choose one to keep working."
+                    : !canCreateFile
+                      ? canBrowseFiles
+                        ? "This folder is read-only. Open a file or write a draft."
+                        : "Drafts stay in this window until you save them."
+                      : "Write notes or code and save them here."
               }
               primaryAction={
-                canCreateFile
+                repository
                   ? {
-                      label: "New file",
+                      label: "Browse files",
                       onSelect: () => {
-                        setTreeLoadRequested(true);
-                        if (narrow) setFilesOpen(true);
-                        setCreationRequest({ kind: "file" });
+                        setExplorer(true);
+                        setFilesOpen(true);
                       },
                     }
-                  : { label: "New draft", onSelect: model.onNewDraft }
+                  : savedFile
+                    ? {
+                        label: `Open ${savedFile.name}`,
+                        onSelect: () => {
+                          model.onOpenFile(
+                            resolveComputerPath(
+                              savedFile.name,
+                              model.context.projectPath,
+                            ),
+                          );
+                        },
+                      }
+                    : canCreateFile
+                      ? {
+                          label: "New file",
+                          onSelect: () => {
+                            setTreeLoadRequested(true);
+                            if (narrow) setFilesOpen(true);
+                            setCreationRequest({ kind: "file" });
+                          },
+                        }
+                      : { label: "New draft", onSelect: model.onNewDraft }
               }
               suggestions={
-                canCreateFile
-                  ? ["notes.md", "todo.md", "ideas.md"].map((name) => ({
-                      label: name,
+                savedFiles.length > 0
+                  ? savedFiles.slice(1, 9).map((entry) => ({
+                      label: entry.name,
                       onSelect: () => {
-                        setTreeLoadRequested(true);
-                        if (narrow) setFilesOpen(true);
-                        setCreationRequest({
-                          kind: "file",
-                          name,
-                          immediate: true,
-                        });
+                        model.onOpenFile(
+                          resolveComputerPath(
+                            entry.name,
+                            model.context.projectPath,
+                          ),
+                        );
                       },
                     }))
-                  : undefined
+                  : canCreateFile
+                    ? ["notes.md", "todo.md", "ideas.md"].map((name) => ({
+                        label: name,
+                        onSelect: () => {
+                          setTreeLoadRequested(true);
+                          if (narrow) setFilesOpen(true);
+                          setCreationRequest({
+                            kind: "file",
+                            name,
+                            immediate: true,
+                          });
+                        },
+                      }))
+                    : undefined
+              }
+              secondaryAction={
+                savedFiles.length > 0 ? (
+                  <Button
+                    variant="outline"
+                    disabled={!canCreateFile}
+                    title={
+                      canCreateFile
+                        ? undefined
+                        : "File write access is not granted."
+                    }
+                    onClick={() => {
+                      setTreeLoadRequested(true);
+                      if (narrow) setFilesOpen(true);
+                      setCreationRequest({ kind: "file" });
+                    }}
+                  >
+                    New file
+                  </Button>
+                ) : undefined
               }
               actions={
-                narrow ? undefined : (
+                savedFiles.length === 0 && !narrow ? (
                   <span className="inkcap-shortcut">
                     <span>New draft:</span>
                     {leaderKeys().map((key) => (
@@ -499,7 +592,7 @@ export function InkcapView({
                     <span>then</span>
                     <Keycap size="sm">N</Keycap>
                   </span>
-                )
+                ) : undefined
               }
             />
           ) : null}
@@ -551,17 +644,18 @@ export function InkcapView({
 /** The Explorer pane: loading, denied-access, or the real file tree. */
 function FileTreePane({
   model,
+  narrow,
   treeLoadRequested,
   active,
   computer,
   onOpenFile,
   onSelectPath,
   creationRequest,
-  onRootEmpty,
   onCreationRequestHandled,
   onDismissExplorerDialog,
 }: {
   model: InkcapViewModel;
+  narrow: boolean;
   treeLoadRequested: boolean;
   active: Tab | undefined;
   computer: string;
@@ -572,7 +666,6 @@ function FileTreePane({
     name?: string;
     immediate?: boolean;
   } | null;
-  onRootEmpty: (empty: boolean) => void;
   onCreationRequestHandled: () => void;
   onDismissExplorerDialog: () => void;
 }): React.JSX.Element {
@@ -637,7 +730,8 @@ function FileTreePane({
       }
     >
       <InkcapFileTree
-        key={`${model.selectedConnection.app.identity.surfaceId}:${model.context.computerId}:${model.context.projectPath}`}
+        key={`${model.selectedConnection.app.identity.surfaceId}:${model.context.computerId}:${model.context.projectPath}:${String(narrow)}`}
+        rowHeight={narrow ? 44 : 32}
         app={model.selectedConnection.app}
         rootPath={model.context.projectPath}
         rootLabel={computer}
@@ -650,7 +744,6 @@ function FileTreePane({
         onOpenFile={onOpenFile}
         onSelectPath={onSelectPath}
         creationRequest={creationRequest}
-        onRootEmpty={onRootEmpty}
         onCreationRequestHandled={onCreationRequestHandled}
       />
     </Suspense>

@@ -7,6 +7,7 @@ import type { BonsaiSnapshot } from "./bonsai-repository.js";
 
 export function RepositoryTree({
   files,
+  rowHeight,
   dirtyPaths,
   activePath,
   busy,
@@ -14,6 +15,7 @@ export function RepositoryTree({
   onOpenFile,
 }: {
   files: BonsaiSnapshot["files"];
+  rowHeight: number;
   dirtyPaths: string[];
   activePath: string | null;
   busy: boolean;
@@ -25,7 +27,7 @@ export function RepositoryTree({
   const { model } = useFileTree({
     paths: [],
     initialExpansion: "open",
-    itemHeight: 32,
+    itemHeight: rowHeight,
     onSelectionChange(paths) {
       const path = paths[0];
       if (
@@ -62,7 +64,7 @@ export function RepositoryTree({
   }, [model, activePath]);
   const style: CSSProperties & Record<`--${string}`, string> = {
     flex: "1",
-    "--trees-item-height": "32px",
+    "--trees-item-height": `${String(rowHeight)}px`,
     "--trees-padding-inline-override": "var(--spacing-xs)",
     "--trees-item-margin-x-override": "0px",
     "--trees-item-padding-x-override": "var(--spacing-xs)",
@@ -85,7 +87,7 @@ export function RepositoryTree({
           icon={<RefreshCw />}
           aria-label="Refresh repository"
           variant="ghost"
-          size="xs"
+          size="responsive"
           disabled={busy}
           onClick={onRefresh}
         />

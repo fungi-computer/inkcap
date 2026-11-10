@@ -1,3 +1,4 @@
+import { FailureLine } from "@fungi.computer/caps/components/failure-line";
 import { describeAppError } from "@fungi.computer/agar/errors";
 import { useEffect, useState, type CSSProperties } from "react";
 import { FileTree } from "@pierre/trees/react";
@@ -28,9 +29,10 @@ export function InkcapFileTree({
   onSelectPath,
   creationRequest = null,
   onCreationRequestHandled,
-  onRootEmpty,
+  rowHeight = TREE_ROW_HEIGHT_PX,
 }: {
   app: AppRoot;
+  rowHeight?: number;
   activePath: string | null;
   rootPath?: string;
   /** The Computer or workspace's real name, shown on the Explorer root row. */
@@ -45,14 +47,13 @@ export function InkcapFileTree({
     immediate?: boolean;
   } | null;
   onCreationRequestHandled?: () => void;
-  /** Told whether the root folder holds nothing yet, so the editor can say so once. */
-  onRootEmpty?: (empty: boolean) => void;
 }): React.JSX.Element {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const tree = useInkcapTreeModel({
     app,
     rootPath,
     rootLabel,
+    rowHeight,
     activePath,
     onOpenFile,
     onSelectPath: (path) => {
@@ -61,10 +62,6 @@ export function InkcapFileTree({
     },
   });
   const [creation, setCreation] = useState<EntryLocation | null>(null);
-  const rootEmpty = tree.rootEmpty;
-  useEffect(() => {
-    onRootEmpty?.(rootEmpty);
-  }, [onRootEmpty, rootEmpty]);
   const canWrite = app.capabilities.has(computerWriteFile);
 
   function startCreation(kind: "file" | "folder", path: string): void {
@@ -141,7 +138,7 @@ export function InkcapFileTree({
   }
   const style: CSSProperties & Record<`--${string}`, string> = {
     flex: "1",
-    "--trees-item-height": `${String(TREE_ROW_HEIGHT_PX)}px`,
+    "--trees-item-height": `${String(rowHeight)}px`,
     // Rows sit on the Stipe grid: a 4px gutter, and row content starting at
     // 8px so the tree lines up with the Explorer header above it.
     "--trees-padding-inline-override": "var(--spacing-xs)",
@@ -168,7 +165,7 @@ export function InkcapFileTree({
             aria-label="New file"
             title="New file"
             variant="ghost"
-            size="xs"
+            size="responsive"
             disabled={!canWrite}
             onClick={() => {
               startCreation("file", selectedPath ?? `${rootPath}/`);
@@ -179,7 +176,7 @@ export function InkcapFileTree({
             aria-label="New folder"
             title="New folder"
             variant="ghost"
-            size="xs"
+            size="responsive"
             disabled={!canWrite}
             onClick={() => {
               startCreation("folder", selectedPath ?? `${rootPath}/`);
@@ -190,13 +187,15 @@ export function InkcapFileTree({
             aria-label="Refresh files"
             title="Refresh files"
             variant="ghost"
-            size="xs"
+            size="responsive"
             disabled={tree.busy}
             onClick={tree.reloadRoot}
           />
         </span>
       </div>
-      {tree.error && <p role="alert">{tree.error}</p>}
+      {tree.error && (
+        <FailureLine message={tree.error} onRetry={tree.reloadRoot} />
+      )}
       {tree.rootEmpty ? <p className="inkcap-tree-note">Empty folder</p> : null}
       <FileTree
         model={tree.model}
