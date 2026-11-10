@@ -200,11 +200,18 @@ body,
   justify-items: center;
   color: var(--stipe-fg-muted);
 }
-/* The editor's empty region centers one Caps EmptyState invitation. */
+/* Start where the editor's content starts, beside Files. */
 .inkcap-empty {
-  align-self: center;
-  width: min(100% - 2 * var(--spacing-lg), 26rem);
-  margin-block: auto;
+  align-self: flex-start;
+  width: min(100% - 2 * var(--spacing-lg), 42rem);
+  margin: var(--spacing-lg);
+}
+.inkcap-empty .empty-state-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
 }
 .inkcap-shortcut {
   display: inline-flex;

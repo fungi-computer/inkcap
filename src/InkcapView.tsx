@@ -478,7 +478,7 @@ export function InkcapView({
           ) : model.tabs.length === 0 ? (
             <EmptyState
               className="inkcap-empty"
-              variant="panel"
+              variant="quiet"
               visual="blobs"
               title={
                 repository
