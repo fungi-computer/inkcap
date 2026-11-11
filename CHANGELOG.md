@@ -1,5 +1,27 @@
 # @fungi.computer/inkcap
 
+## 0.8.9
+
+### Patch Changes
+
+- Changes since 0.8.8:
+
+  - fix(inkcap): keep a heading extension only when the heading looks like a
+    file name
+  - fix(inkcap): keep a typed Save As path and never join a full path as a name
+  - fix(inkcap): name a deleted file, not its folder, when an edit finds nothing
+  - fix(inkcap): answer a missing folder from the host, open Files for New file,
+    centre the welcome
+  - fix(inkcap): say how to fix an Agent write outside the Computer, centre the
+    first-run welcome
+  - fix(inkcap): refuse a missing folder to the Agent and give a first run the
+    whole window
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/caps@0.10.6
+  - @fungi.computer/nacre@0.4.6
+
 ## 0.8.8
 
 ### Patch Changes

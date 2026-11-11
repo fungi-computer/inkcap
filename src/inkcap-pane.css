@@ -200,11 +200,14 @@ body,
   justify-items: center;
   color: var(--stipe-fg-muted);
 }
-/* Start where the editor's content starts, beside Files. */
+/* The first-run invitation sits in the middle of the editor area. */
 .inkcap-empty {
-  align-self: flex-start;
-  width: min(100% - 2 * var(--spacing-lg), 42rem);
-  margin: var(--spacing-lg);
+  align-self: center;
+  width: min(100% - 2 * var(--spacing-lg), 28rem);
+  margin: auto;
+  padding-block-end: var(--spacing-2xl);
+  justify-items: center;
+  text-align: center;
 }
 .inkcap-empty .empty-state-title {
   margin: 0;

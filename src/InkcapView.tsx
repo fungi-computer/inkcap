@@ -108,7 +108,7 @@ export function InkcapView({
 }: {
   model: InkcapViewModel;
 }): React.JSX.Element {
-  const [explorer, setExplorer] = useState(true);
+  const [explorerChoice, setExplorerChoice] = useState<boolean | null>(null);
   const [narrow, setNarrow] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const root = useRef<HTMLElement>(null);
@@ -141,6 +141,18 @@ export function InkcapView({
   const savedFiles =
     listing.data?.entries.filter((entry) => entry.type === "file") ?? [];
   const savedFile = savedFiles.at(0);
+  // A Computer with nothing in it yet gets the whole window for the first
+  // file; the column opens once there is something to browse. An explicit
+  // toggle always wins.
+  const nothingToBrowse =
+    canBrowseFiles &&
+    model.tabs.length === 0 &&
+    (listing.isPending ||
+      (listing.isSuccess && listing.data.entries.length === 0));
+  const explorer = explorerChoice ?? !nothingToBrowse;
+  const setExplorer = (next: boolean | ((value: boolean) => boolean)): void => {
+    setExplorerChoice(typeof next === "function" ? next(explorer) : next);
+  };
   const repository = model.selectedConnection?.source?.kind === "repository";
   const canCreateFile =
     model.canList &&
@@ -330,19 +342,19 @@ export function InkcapView({
                 </DialogContent>
               </Dialog>
             ) : (
-              <IconButton
-                size="responsive"
+              <Button
+                size="sm"
                 variant="ghost"
-                className="inkcap-explorer-toggle"
-                icon={<PanelLeft />}
-                aria-label="Toggle file explorer"
+                className="inkcap-explorer-toggle inkcap-files-button"
                 title={explorer ? "Hide file explorer" : "Show file explorer"}
                 aria-expanded={explorer}
                 aria-controls={`${id}-explorer`}
                 onClick={() => {
                   setExplorer((value) => !value);
                 }}
-              />
+              >
+                <PanelLeft aria-hidden="true" /> Files
+              </Button>
             )}
             <TabsList className="inkcap-tabs gap-0" aria-label="Editor tabs">
               {model.tabs.map((tab) => (
@@ -527,6 +539,7 @@ export function InkcapView({
                           onSelect: () => {
                             setTreeLoadRequested(true);
                             if (narrow) setFilesOpen(true);
+                            else setExplorer(true);
                             setCreationRequest({ kind: "file" });
                           },
                         }
@@ -551,6 +564,7 @@ export function InkcapView({
                         onSelect: () => {
                           setTreeLoadRequested(true);
                           if (narrow) setFilesOpen(true);
+                          else setExplorer(true);
                           setCreationRequest({
                             kind: "file",
                             name,
@@ -573,6 +587,7 @@ export function InkcapView({
                     onClick={() => {
                       setTreeLoadRequested(true);
                       if (narrow) setFilesOpen(true);
+                      else setExplorer(true);
                       setCreationRequest({ kind: "file" });
                     }}
                   >

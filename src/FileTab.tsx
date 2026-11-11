@@ -377,7 +377,7 @@ function FileTabLayout({
         sourceLabel={sourceLabel}
         error={document.error}
         path={
-          local
+          local && !document.currentPath.startsWith("/")
             ? draftSavePath(
                 saveAsDirectory,
                 document.currentPath,
@@ -687,9 +687,13 @@ function SaveAsDialog({
   });
   const submitting = useSelector(form.store, (state) => state.isSubmitting);
   const formBusy = busy || submitting;
+  // Offer the starting path when the dialog opens, never while it is open: a
+  // late change to the folder or draft must not replace what the user typed.
+  const startPath = useRef(path);
+  startPath.current = path;
   useEffect(() => {
-    if (open) form.setFieldValue("path", path);
-  }, [open, path]);
+    if (open) form.setFieldValue("path", startPath.current);
+  }, [open]);
   return (
     <Dialog
       open={open && !(sourceLabel && busy)}

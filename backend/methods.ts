@@ -95,6 +95,14 @@ const refusal = z.union([
     ]),
   }),
   z.strictObject({
+    error: z.literal("not_found"),
+    message: z.string(),
+  }),
+  z.strictObject({
+    error: z.literal("parent_not_found"),
+    message: z.string(),
+  }),
+  z.strictObject({
     error: z.literal("attachment_budget_exceeded"),
     kind: z.literal("write"),
     retryAfterMs: z.number().int().min(1).max(86400000),
@@ -105,14 +113,33 @@ const readReply = z.union([readOutput, refusal]);
 const writeReply = z.union([writeOutputSchema, refusal]);
 // The host always supplies callable bindings; admission is checked on invocation.
 const bindingNotGranted = z.object({ code: z.literal("binding_not_granted") });
+// The Computer's file system names an absent file or parent folder ENOENT. It is
+// a domain answer, so it must reach the Agent as a refusal; thrown, the sandbox
+// reports only "failed for an unrecognized reason".
+const pathAbsent = z.object({ code: z.literal("ENOENT") });
+function parentNotFound(path: string) {
+  const folder = path.slice(0, path.lastIndexOf("/")) || "/";
+  return {
+    error: "parent_not_found" as const,
+    message: `The folder ${folder} does not exist; Inkcap can't create folders yet. Save into an existing folder (for example /notes.md at the top level), or list folders with listFiles.`,
+  };
+}
+function fileGone(path: string) {
+  return {
+    error: "not_found" as const,
+    message: `The file ${path} no longer exists on the Computer. Read its directory again, or write it as a new file without expectedContent.`,
+  };
+}
 async function computerCall(
   call: () => Promise<WhistleJsonValue>,
+  absent: WhistleJsonValue = { error: "not_found" },
 ): Promise<WhistleJsonValue> {
   try {
     return await call();
   } catch (cause) {
     if (bindingNotGranted.safeParse(cause).success)
       return { error: "not_granted" };
+    if (pathAbsent.safeParse(cause).success) return absent;
     throw cause;
   }
 }
@@ -199,7 +226,7 @@ export const appBackend = defineAppBackend({
     }),
     writeFile: defineAppMethod({
       description:
-        "Write UTF-8 text on the attached Computer. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
+        "Write UTF-8 text on the attached Computer. The folder must already exist (Inkcap cannot create folders): a missing folder is refused as parent_not_found, and the path is on the Computer, not the host machine. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
       effect: "write",
       requires: ["computer.writeFile"],
       input: writeInput,
@@ -212,7 +239,10 @@ export const appBackend = defineAppBackend({
             ? {
                 id: "refused",
                 title: "Inkcap could not write the file",
-                detail: output.error,
+                detail:
+                  output.error === "parent_not_found"
+                    ? "That folder does not exist on the Computer"
+                    : output.error,
                 tone: "error",
               }
             : {
@@ -224,12 +254,21 @@ export const appBackend = defineAppBackend({
                 },
               },
       },
-      handler: async (input, context: InkcapBackendContext, caller) =>
-        caller.computerId === null
-          ? refusal.parse({ error: "not_granted" })
-          : writeReply.parse(
-              await computerCall(() => context.env.COMPUTER.write(input)),
-            ),
+      handler: async (input, context: InkcapBackendContext, caller) => {
+        if (caller.computerId === null)
+          return refusal.parse({ error: "not_granted" });
+        // An edit of an existing file (expectedContent) that is missing means
+        // the file is gone; only a new path can lack its folder.
+        const absent =
+          input.expectedContent === undefined
+            ? parentNotFound(input.path)
+            : fileGone(input.path);
+        const reply = writeReply.parse(
+          await computerCall(() => context.env.COMPUTER.write(input), absent),
+        );
+        // Hosts answer a missing path as plain not_found.
+        return "error" in reply && reply.error === "not_found" ? absent : reply;
+      },
     }),
   },
 });
