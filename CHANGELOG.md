@@ -1,5 +1,13 @@
 # @fungi.computer/inkcap
 
+## 0.8.11
+
+### Patch Changes
+
+- Changes since 0.8.10:
+
+  - fix(inkcap,trellis): make the strip under the app header 32px
+
 ## 0.8.10
 
 ### Patch Changes

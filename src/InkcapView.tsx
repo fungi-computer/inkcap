@@ -386,6 +386,7 @@ export function InkcapView({
               </Dialog>
             ) : (
               <Button
+                size="sm"
                 variant="ghost"
                 className="inkcap-explorer-toggle inkcap-files-button"
                 title={explorer ? "Hide file explorer" : "Show file explorer"}
