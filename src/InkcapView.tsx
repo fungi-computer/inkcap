@@ -214,6 +214,49 @@ export function InkcapView({
     },
   ]);
   const active = model.tabs.find((tab) => tab.tabKey === model.active);
+  // A narrow strip scrolls: when the open file's tab is not fully visible,
+  // start the strip at that tab so earlier tabs sit fully off to the left. The
+  // strip gets just enough trailing room for that, only while it overflows.
+  useEffect(() => {
+    const strip = root.current?.querySelector<HTMLElement>(".inkcap-tabs");
+    const tab = strip?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const first = strip?.firstElementChild;
+    const last = strip?.lastElementChild;
+    if (!strip || !tab || !(first instanceof HTMLElement)) return;
+    if (!(last instanceof HTMLElement)) return;
+    const content = last.offsetLeft + last.offsetWidth - first.offsetLeft;
+    if (content <= strip.clientWidth) {
+      strip.style.removeProperty("--inkcap-tabs-tail");
+      return;
+    }
+    const left = tab.offsetLeft - first.offsetLeft;
+    const right = left + tab.offsetWidth;
+    strip.style.setProperty(
+      "--inkcap-tabs-tail",
+      `${String(Math.max(0, left + strip.clientWidth - content))}px`,
+    );
+    if (left < strip.scrollLeft || right > strip.scrollLeft + strip.clientWidth)
+      strip.scrollLeft = left;
+  }, [model.active, model.tabs.length, narrow]);
+  // Mark which sides of the tab strip hide tabs, so CSS can fade only those.
+  useEffect(() => {
+    const strip = root.current?.querySelector<HTMLElement>(".inkcap-tabs");
+    if (!strip) return;
+    const mark = () => {
+      const max = strip.scrollWidth - strip.clientWidth;
+      strip.toggleAttribute("data-overflow-start", strip.scrollLeft > 1);
+      strip.toggleAttribute("data-overflow-end", strip.scrollLeft < max - 1);
+    };
+    mark();
+    strip.addEventListener("scroll", mark, { passive: true });
+    const observer =
+      "ResizeObserver" in globalThis ? new ResizeObserver(mark) : null;
+    observer?.observe(strip);
+    return () => {
+      strip.removeEventListener("scroll", mark);
+      observer?.disconnect();
+    };
+  }, [model.active, model.tabs.length, narrow]);
   useEffect(() => {
     setSelectedTreePath(null);
   }, [
@@ -343,7 +386,6 @@ export function InkcapView({
               </Dialog>
             ) : (
               <Button
-                size="sm"
                 variant="ghost"
                 className="inkcap-explorer-toggle inkcap-files-button"
                 title={explorer ? "Hide file explorer" : "Show file explorer"}

@@ -54,6 +54,12 @@ body,
 .inkcap-tree file-tree-container {
   scrollbar-color: auto;
 }
+/* The same inherited scrollbar-color makes the editor scroller a classic
+   scrollbar that reserves a 15px gutter, so the active-line band stopped short
+   of the right edge. Reset it so the editor's own ::-webkit-scrollbar applies. */
+.inkcap-editor diffs-container {
+  scrollbar-color: auto;
+}
 .inkcap-tree-toolbar {
   height: var(--inkcap-bar-height);
   flex: none;
@@ -115,9 +121,28 @@ body,
 }
 .inkcap-tabs {
   display: flex;
+  /* Tabs scroll sideways; wrapping hid the later ones on a second, clipped line. */
+  flex-wrap: nowrap;
+  padding-inline-end: var(--inkcap-tabs-tail, 0px);
   flex: 1;
   min-width: 0;
   overflow-x: auto;
+}
+/* Fade only the side that hides tabs, so a clipped tab reads as scrolled. */
+.inkcap-tabs[data-overflow-start] {
+  mask-image: linear-gradient(to right, transparent, #000 1rem);
+}
+.inkcap-tabs[data-overflow-end] {
+  mask-image: linear-gradient(to left, transparent, #000 1rem);
+}
+.inkcap-tabs[data-overflow-start][data-overflow-end] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 1rem,
+    #000 calc(100% - 1rem),
+    transparent
+  );
 }
 .inkcap-tab {
   flex: none;
@@ -252,9 +277,15 @@ body,
   justify-content: flex-end;
 }
 .inkcap-files-button {
+  /* Same type size as the tabs beside it, at every width. */
+  font-size: 0.875rem;
   flex: none;
   align-self: center;
   margin-inline: var(--spacing-xs);
+}
+.inkcap-files-button > svg {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 .inkcap-tree-actions {
   display: inline-flex;

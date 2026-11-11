@@ -1,5 +1,18 @@
 # @fungi.computer/inkcap
 
+## 0.8.10
+
+### Patch Changes
+
+- Changes since 0.8.9:
+
+  - fix(inkcap): start the tab strip at the open file when it is clipped
+  - fix(inkcap): fade the tab strip edge that hides tabs
+  - fix(prints,inkcap): tighten alignment, spacing and sizing
+
+- Updated dependencies
+  - @fungi.computer/caps@0.10.7
+
 ## 0.8.9
 
 ### Patch Changes
