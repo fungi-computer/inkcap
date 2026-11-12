@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { EditProvider, File as DiffsFile } from "@pierre/diffs/react";
 import { Editor } from "@pierre/diffs/edit";
-import {
-  Button,
-  type ButtonResult,
-} from "@fungi.computer/caps/components/button";
+import { Button } from "@fungi.computer/caps/components/button";
 import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import { TabsContent } from "@fungi.computer/caps/components/tabs";
 import { Input } from "@fungi.computer/caps/components/input";
 import { Alert } from "@fungi.computer/caps/components/alert";
+import { MoreHorizontal, X } from "lucide-react";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@fungi.computer/caps/components/tooltip";
-import { RefreshCw, Save, SaveAll, X, Info, Eye } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@fungi.computer/caps/components/dropdown-menu";
 import {
   Dialog,
   DialogClose,
@@ -38,6 +39,7 @@ export function FileTab({
   path,
   initial,
   active,
+  menuSlot,
   narrow,
   tabKey,
   savable,
@@ -64,6 +66,8 @@ export function FileTab({
   path: string;
   initial: string;
   active: boolean;
+  /** Where the active file's More menu renders: the end of the tab strip. */
+  menuSlot: HTMLElement | null;
   narrow: boolean;
   tabKey: number;
   savable: boolean;
@@ -223,6 +227,7 @@ export function FileTab({
   return (
     <FileTabLayout
       themeRoot={themeRoot}
+      menuSlot={active ? menuSlot : null}
       tabKey={tabKey}
       savable={savable}
       narrow={narrow}
@@ -256,6 +261,7 @@ export function FileTab({
 
 function FileTabLayout({
   themeRoot,
+  menuSlot,
   tabKey,
   savable,
   narrow,
@@ -283,6 +289,7 @@ function FileTabLayout({
   onToggleMarkdownPreview,
 }: {
   themeRoot: React.RefObject<HTMLDivElement>;
+  menuSlot: HTMLElement | null;
   tabKey: number;
   savable: boolean;
   narrow: boolean;
@@ -317,31 +324,51 @@ function FileTabLayout({
       forceMount
       aria-label={document.currentPath}
     >
-      <FileToolbar
-        narrow={narrow}
-        savable={savable && !document.conflict && !document.resolving}
-        path={document.currentPath}
-        sourceLabel={sourceLabel}
-        activityNotice={activityNotice}
-        onDismissActivityNotice={onDismissActivityNotice}
-        dirty={document.dirty}
-        saving={document.saving}
-        local={local}
-        canSaveAs={Boolean(onSaveAs && !previewUrl)}
-        canPreviewMarkdown={canPreviewMarkdown}
-        markdownPreview={markdownPreview}
-        onToggleMarkdownPreview={onToggleMarkdownPreview}
-        onSave={() => {
-          void onSave().catch((cause: unknown) => {
-            console.error("Inkcap save failed", cause);
-            return undefined;
-          });
-        }}
-        onSaveAs={() => {
-          setSaveAsOpen(true);
-        }}
-        onReopen={onReopen}
-      />
+      {menuSlot
+        ? createPortal(
+            <FileMenu
+              savable={savable && !document.conflict && !document.resolving}
+              path={document.currentPath}
+              dirty={document.dirty}
+              saving={document.saving}
+              local={local}
+              canSaveAs={Boolean(onSaveAs && !previewUrl)}
+              canPreviewMarkdown={canPreviewMarkdown}
+              markdownPreview={markdownPreview}
+              onToggleMarkdownPreview={onToggleMarkdownPreview}
+              onSave={() => {
+                void onSave().catch((cause: unknown) => {
+                  console.error("Inkcap save failed", cause);
+                  return undefined;
+                });
+              }}
+              onSaveAs={() => {
+                setSaveAsOpen(true);
+              }}
+              onReopen={onReopen}
+            />,
+            menuSlot,
+          )
+        : null}
+      {activityNotice ? (
+        <Alert
+          className="inkcap-notice"
+          tone="warning"
+          role="status"
+          title="Recent files didn't update"
+          description={`${saveLabel(local, document.dirty, document.saving)} worked; the Recent Files list could not record it.`}
+          action={
+            <IconButton
+              icon={<X />}
+              aria-label="Dismiss Recent Files notice"
+              title="Dismiss Recent Files notice"
+              variant="ghost"
+              size="responsive"
+              onClick={onDismissActivityNotice}
+            />
+          }
+        />
+      ) : null}
       <FileConflict
         document={document}
         theme={theme}
@@ -361,7 +388,8 @@ function FileTabLayout({
         />
       ) : null}
       <FileContent
-        key={document.reloadVersion}
+        // The editor binds to one file; Save As renames it, so it gets a new one.
+        key={`${String(document.reloadVersion)}:${document.currentPath}`}
         previewUrl={previewUrl}
         previewKind={previewKind}
         path={document.currentPath}
@@ -396,16 +424,12 @@ function FileTabLayout({
   );
 }
 
-function FileToolbar({
-  narrow,
+function FileMenu({
   savable,
   path,
   dirty,
   saving,
   local,
-  sourceLabel,
-  activityNotice,
-  onDismissActivityNotice,
   canSaveAs,
   canPreviewMarkdown,
   markdownPreview,
@@ -414,15 +438,11 @@ function FileToolbar({
   onSaveAs,
   onReopen,
 }: {
-  narrow: boolean;
   savable: boolean;
   path: string;
   dirty: boolean;
   saving: boolean;
   local: boolean;
-  sourceLabel?: string;
-  activityNotice?: boolean;
-  onDismissActivityNotice?: () => void;
   canSaveAs: boolean;
   canPreviewMarkdown: boolean;
   markdownPreview: boolean;
@@ -431,97 +451,61 @@ function FileToolbar({
   onSaveAs: () => void;
   onReopen?: () => void;
 }): React.JSX.Element {
-  // A finished save checks the Save button; a refused one shakes it.
-  const [wasSaving, setWasSaving] = useState(saving);
-  const [outcome, setOutcome] = useState<ButtonResult | undefined>(undefined);
-  if (wasSaving !== saving) {
-    setWasSaving(saving);
-    setOutcome(saving ? undefined : dirty ? "failed" : "done");
-  }
   return (
-    <div className="inkcap-file-toolbar" aria-label="File actions">
-      <span className="inkcap-path" title={path}>
-        {path}
-        {sourceLabel ? ` · ${sourceLabel}` : ""}
-      </span>
-      {canPreviewMarkdown ? (
-        <IconButton
-          variant="ghost"
-          size="responsive"
-          icon={<Eye />}
-          aria-label="Preview Markdown"
-          title="Preview Markdown"
-          active={markdownPreview}
-          aria-pressed={markdownPreview}
-          onClick={onToggleMarkdownPreview}
-        />
-      ) : null}
-      <IconButton
-        variant="ghost"
-        size="responsive"
-        icon={<Save />}
-        aria-label={saveLabel(local, dirty, saving)}
-        title={saveLabel(local, dirty, saving)}
-        disabled={!savable || (!local && !dirty) || saving}
-        onClick={onSave}
-        result={outcome}
-      />
-      {activityNotice ? (
-        <>
-          <small
-            role="status"
-            className={narrow ? "sr-only" : "whitespace-nowrap"}
-          >
-            {saveLabel(local, dirty, saving)} · Recent files didn't update
-          </small>
-          {narrow ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  icon={<Info />}
-                  aria-label="Recent files didn't update"
-                  variant="ghost"
-                  size="responsive"
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                {saveLabel(local, dirty, saving)} · Recent files didn't update
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
           <IconButton
-            icon={<X />}
-            aria-label="Dismiss Recent Files notice"
-            title="Dismiss Recent Files notice"
             variant="ghost"
             size="responsive"
-            onClick={onDismissActivityNotice}
+            icon={<MoreHorizontal />}
+            aria-label="More"
+            title="More"
           />
-        </>
-      ) : null}
-      {canSaveAs && (
-        <IconButton
-          icon={<SaveAll />}
-          aria-label="Save file as"
-          title="Save file as"
-          variant="ghost"
-          size="responsive"
-          disabled={!savable || saving}
-          onClick={onSaveAs}
-        />
-      )}
-      {onReopen && (
-        <IconButton
-          icon={<RefreshCw />}
-          aria-label="Reload file"
-          title="Reload saved file"
-          variant="ghost"
-          size="responsive"
-          disabled={!savable || dirty || saving}
-          onClick={onReopen}
-        />
-      )}
-    </div>
+        }
+      />
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          disabled={!savable || (!local && !dirty) || saving}
+          onSelect={onSave}
+        >
+          {saveLabel(local, dirty, saving)}
+        </DropdownMenuItem>
+        {canSaveAs ? (
+          <DropdownMenuItem disabled={!savable || saving} onSelect={onSaveAs}>
+            Save file as
+          </DropdownMenuItem>
+        ) : null}
+        {onReopen ? (
+          <DropdownMenuItem
+            disabled={!savable || dirty || saving}
+            onSelect={onReopen}
+          >
+            Reload from disk
+          </DropdownMenuItem>
+        ) : null}
+        {canPreviewMarkdown ? (
+          <DropdownMenuCheckboxItem
+            checked={markdownPreview}
+            onSelect={onToggleMarkdownPreview}
+          >
+            Preview Markdown
+          </DropdownMenuCheckboxItem>
+        ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => {
+            void globalThis.navigator.clipboard
+              .writeText(path)
+              .catch((cause: unknown) => {
+                console.error("Inkcap could not copy the path", cause);
+              });
+          }}
+        >
+          Copy path
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

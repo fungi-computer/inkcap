@@ -1,5 +1,23 @@
 # @fungi.computer/inkcap
 
+## 0.9.0
+
+### Minor Changes
+
+- Changes since 0.8.11:
+
+  - fix(inkcap): don't report a cancelled read after the App is gone
+  - fix(inkcap): give a renamed draft a fresh editor so typing lands after Save
+    As or Download
+  - fix(inkcap): stop exporting test helpers nothing imports
+  - feat(inkcap): replace the file path bar with a More menu in the tab strip
+  - fix(inkcap): keep a tab's icon and name on one row in the 32px strip
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/caps@0.10.8
+
 ## 0.8.11
 
 ### Patch Changes

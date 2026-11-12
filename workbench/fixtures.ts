@@ -32,6 +32,10 @@ export type InkcapScenario =
   | "readonly"
   | "activity-error";
 export const projectPath = "/field-notes";
+/** A generated-image name far longer than a tab, as Prints saves them. */
+const longImageName = "generated-wavy-ergot-tinderbox-sclerotium.svg";
+const sampleSvg =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="green"/></svg>';
 export const videoClipPath = `${projectPath}/clip.mp4`;
 export const oversizedVideoPath = `${projectPath}/oversized.mp4`;
 /** Served by the browser proof's route interception; a real CC0 clip never
@@ -101,6 +105,7 @@ export function createInkcapFixture(
       '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="green"/><script>parent.document.documentElement.dataset.inkcapSvgScript="executed";</script></svg>',
     );
     files.set(`${projectPath}/invalid.svg`, "This is not an SVG image.");
+    files.set(`${projectPath}/${longImageName}`, sampleSvg);
   }
   if (scenario === "videos") {
     // Text `files` only tracks listing metadata here; the clip's real bytes

@@ -111,6 +111,7 @@ export function InkcapView({
   const [explorerChoice, setExplorerChoice] = useState<boolean | null>(null);
   const [narrow, setNarrow] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
+  const [menuSlot, setMenuSlot] = useState<HTMLElement | null>(null);
   const root = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = root.current;
@@ -440,6 +441,7 @@ export function InkcapView({
                 title={`New draft (${leaderText()}, then N)`}
                 onClick={model.onNewDraft}
               />
+              <span className="inkcap-menu-slot" ref={setMenuSlot} />
             </div>
           </div>
           {model.tabs.map((tab) => (
@@ -462,6 +464,7 @@ export function InkcapView({
                 path={tab.path}
                 initial={tab.initial}
                 active={model.active === tab.tabKey}
+                menuSlot={menuSlot}
                 narrow={narrow}
                 local={tab.connection === null}
                 savable={

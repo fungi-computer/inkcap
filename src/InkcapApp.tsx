@@ -463,16 +463,17 @@ export function useInkcapWorkbench({
       if (!background && applied)
         await recordActivity(selected, selectedComputer, path, "opened");
     } catch (cause) {
+      // Leaving the App aborts reads; a cancelled read is not a failure, and a
+      // report then would land after the window is gone.
+      if (controller.signal.aborted) return;
       console.error("Inkcap file read failed", cause);
-
-      if (!controller.signal.aborted)
-        setError(
-          cause instanceof AppError && cause.code === "FILE_TOO_LARGE"
-            ? selected.source?.kind === "repository"
-              ? "This repository file is too large to edit in Inkcap. Choose a smaller file. Existing edits remain open."
-              : "This file is too large to preview in Inkcap. Choose a smaller file. Existing edits remain open."
-            : `Could not read ${path}. Access may be denied or ${selected.source?.label ?? "the Computer"} unavailable. Existing edits remain open.`,
-        );
+      setError(
+        cause instanceof AppError && cause.code === "FILE_TOO_LARGE"
+          ? selected.source?.kind === "repository"
+            ? "This repository file is too large to edit in Inkcap. Choose a smaller file. Existing edits remain open."
+            : "This file is too large to preview in Inkcap. Choose a smaller file. Existing edits remain open."
+          : `Could not read ${path}. Access may be denied or ${selected.source?.label ?? "the Computer"} unavailable. Existing edits remain open.`,
+      );
     } finally {
       reads.current.delete(controller);
       opening.current.delete(openKey);
@@ -537,11 +538,13 @@ export function useInkcapWorkbench({
     }
     let active = true;
     void openFileRef.current(target.data).catch((cause: unknown) => {
+      // A request superseded or torn down with the App has no one to tell.
+      if (!active) return;
       console.error(
         "Inkcap Recent File could not be opened",
         Redacted.make(cause),
       );
-      if (active && current.current === connection)
+      if (current.current === connection)
         setError(
           "This Recent File could not be opened. Your existing documents remain open.",
         );

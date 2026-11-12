@@ -16,9 +16,6 @@ body,
   color: var(--color-base-content);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
-  /* Rows sit on the Stipe grid: header rows are a 40px band (32px plus an
-     8px step, Daisy's md field height). The shell owns the status row. */
-  --inkcap-bar-height: calc(var(--spacing-2xl) + var(--spacing-sm));
   /* The tab strip and the explorer header beside it are one 32px band. */
   --inkcap-strip-height: 2rem;
 }
@@ -160,6 +157,9 @@ body,
   height: 100%;
   gap: var(--spacing-xs);
   padding-inline: var(--spacing-sm);
+  /* daisyUI's .tab wraps, so a name wider than the tab dropped below its icon
+     and out of the strip; the icon and name stay on one row. */
+  flex-wrap: nowrap;
 }
 .inkcap-tab > span:first-of-type {
   overflow: hidden;
@@ -187,25 +187,6 @@ body,
 }
 .inkcap-editor[hidden] {
   display: none;
-}
-.inkcap-file-toolbar {
-  display: flex;
-  align-items: center;
-  flex: none;
-  height: var(--inkcap-bar-height);
-  gap: var(--spacing-xs);
-  padding-inline: var(--spacing-sm);
-  border-block-end: 1px solid var(--stipe-hairline);
-}
-.inkcap-path {
-  margin-inline-end: auto;
-  padding-inline-start: var(--spacing-xs);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  color: var(--stipe-fg-muted);
 }
 .inkcap-code {
   --diffs-font-family: var(--font-mono);
@@ -265,11 +246,6 @@ body,
 .inkcap-notice {
   margin: var(--spacing-sm);
   flex: none;
-}
-@container (max-width: 36rem) {
-  .inkcap-path {
-    max-width: 8rem;
-  }
 }
 
 .inkcap-tree .inkcap-tree-note {
@@ -391,10 +367,4 @@ body,
   border-bottom: 1px solid var(--color-base-300);
   padding-block-end: var(--spacing-sm);
   font-size: 0.75rem;
-}
-
-@container (max-width: 640px) {
-  .inkcap-file-toolbar {
-    min-height: var(--caps-touch-target);
-  }
 }
