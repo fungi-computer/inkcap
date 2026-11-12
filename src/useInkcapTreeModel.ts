@@ -27,14 +27,18 @@ function entryPath(directory: string, name: string, type: string): string {
 
 /** Merge one server listing into the native model without repeating paths. */
 export function mergeListing(
-  model: Pick<FileTree, "batch">,
+  model: Pick<FileTree, "batch" | "getItem">,
   result: ComputerListing,
   knownPaths: Set<string>,
 ): readonly string[] {
   const paths = result.entries
     .filter((entry) => entry.type !== "symlink")
     .map((entry) => entryPath(result.path, entry.name, entry.type));
-  const additions = paths.filter((path) => !knownPaths.has(path));
+  // The model also holds rows added outside a listing (a just-created file);
+  // adding one again throws, so the model itself is the final word.
+  const additions = paths.filter(
+    (path) => !knownPaths.has(path) && !model.getItem(path),
+  );
   if (additions.length > 0) {
     const operations: FileTreeBatchOperation[] = additions.map((path) => ({
       type: "add",

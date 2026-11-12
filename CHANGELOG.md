@@ -1,5 +1,24 @@
 # @fungi.computer/inkcap
 
+## 0.10.0
+
+### Minor Changes
+
+- Changes since 0.9.0:
+
+  - fix(inkcap): keep the window alive on Save As and keep the File menu across
+    tabs
+  - feat(window): add in-App Forward to the window contract and title bar
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.10.0
+  - @fungi.computer/caps@0.11.0
+  - @fungi.computer/nacre@0.5.0
+
 ## 0.9.0
 
 ### Minor Changes

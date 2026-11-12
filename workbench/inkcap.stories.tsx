@@ -39,6 +39,7 @@ function Workbench({
         return Promise.resolve();
       },
       onActivate: () => () => undefined,
+      onForward: () => () => undefined,
       onBack: (handler) => {
         back.current = handler;
         return () => {

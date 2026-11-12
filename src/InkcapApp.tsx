@@ -252,6 +252,8 @@ export function useInkcapWorkbench({
   }, [history.index]);
   useHostNavigation(connection?.app.window.navigation, {
     canGoBack: history.index > 0,
+    canGoForward: false,
+    onForward: () => false,
     onBack: goBack,
   });
   const activate = useCallback((key: number) => {
