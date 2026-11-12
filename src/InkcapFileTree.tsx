@@ -119,16 +119,14 @@ export function InkcapFileTree({
       }
       if (creation.kind === "folder") {
         await app.capabilities.require(computerWriteFile).mkdir({ path });
-        if (!tree.model.getItem(`${path}/`))
-          tree.model.batch([{ type: "add", path: `${path}/` }]);
+        tree.noteCreated(`${path}/`);
       } else {
         await writeComputerFile(
           app.capabilities,
           { path, content: new Blob([]) },
           {},
         );
-        if (!tree.model.getItem(path))
-          tree.model.batch([{ type: "add", path }]);
+        tree.noteCreated(path);
         onOpenFile(path);
       }
       return undefined;

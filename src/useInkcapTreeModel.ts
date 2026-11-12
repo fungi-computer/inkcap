@@ -12,7 +12,7 @@ import { useFileTree } from "@pierre/trees/react";
 import { FileTree, type FileTreeBatchOperation } from "@pierre/trees";
 import type { AppRoot } from "@fungi.computer/agar";
 import { useComputerId } from "@fungi.computer/agar/react";
-import { directoryQuery } from "./tree-queries.js";
+import { directoryQuery, isHiddenEntry } from "./tree-queries.js";
 import { queryKeys } from "@fungi.computer/agar/query";
 import { describeAppError } from "@fungi.computer/agar/errors";
 import * as Redacted from "effect/Redacted";
@@ -263,6 +263,17 @@ export function useInkcapTreeModel({
       queryKey: queryKeys.of(app, "tree", version),
     });
   };
+  /**
+   * Show an entry this window just created, by the same rule the listing
+   * applies, then re-read the listing so the root's empty note and every
+   * page agree with the Computer.
+   */
+  const noteCreated = (path: string) => {
+    const name = path.split("/").filter(Boolean).at(-1) ?? "";
+    if (!isHiddenEntry({ name, type: "" }) && !model.getItem(path))
+      model.batch([{ type: "add", path }]);
+    reloadRoot();
+  };
   const loadNext = () => {
     if (page.next !== null) requestPage(page.path, page.next);
   };
@@ -275,6 +286,7 @@ export function useInkcapTreeModel({
     busy: snapshot.busy,
     rootEmpty,
     reloadRoot,
+    noteCreated,
     loadNext,
   };
 }

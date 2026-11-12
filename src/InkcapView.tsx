@@ -269,7 +269,29 @@ export function InkcapView({
       strip.toggleAttribute("data-overflow-end", strip.scrollLeft < max - 1);
       setTabsOverflow(max > 1);
     };
+    // Rest only on a whole tab's edge. A strip that scrolls gets just enough
+    // room after its last tab to bring that tab's edge to the start, so the
+    // tab before it can always hide whole, close button and all.
+    const padTail = () => {
+      const tabs = Array.from(
+        strip.querySelectorAll<HTMLElement>('[role="tab"]'),
+      );
+      const firstTab = tabs.at(0);
+      const lastTab = tabs.at(-1);
+      const lastClose = lastTab?.nextElementSibling;
+      let tail = "";
+      if (firstTab && lastTab && lastClose instanceof HTMLElement) {
+        const content =
+          lastClose.offsetLeft + lastClose.offsetWidth - firstTab.offsetLeft;
+        const lastWidth =
+          lastClose.offsetLeft + lastClose.offsetWidth - lastTab.offsetLeft;
+        if (content > strip.clientWidth)
+          tail = `${String(Math.max(0, strip.clientWidth - lastWidth))}px`;
+      }
+      strip.style.paddingInlineEnd = tail;
+    };
     const reveal = () => {
+      padTail();
       const tab = strip.querySelector<HTMLElement>('[aria-selected="true"]');
       const first = strip.firstElementChild;
       const close = tab?.nextElementSibling;
@@ -351,6 +373,7 @@ export function InkcapView({
     <main
       ref={root}
       className="inkcap-app"
+      data-narrow={narrow ? "" : undefined}
       aria-label="Inkcap editor"
       onKeyDown={(event) => {
         // Native editor events cross its shadow root with a custom-element target.

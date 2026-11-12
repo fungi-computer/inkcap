@@ -26,6 +26,10 @@ body,
     --inkcap-strip-height: var(--caps-touch-target, 2.75rem);
   }
 }
+/* A phone-width window is touched however the browser reports its pointer. */
+.inkcap-app[data-narrow] {
+  --inkcap-strip-height: var(--caps-touch-target, 2.75rem);
+}
 .inkcap-tree-toolbar > span > svg {
   width: 1rem;
   height: 1rem;
@@ -150,12 +154,10 @@ body,
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  /* Rest only on a whole tab's edge, so a scroll never strands a lone close
-     button at the strip's start. */
-  scroll-snap-type: x mandatory;
-  /* Room to scroll the last tab's edge to the start, so the tab before it can
-     hide whole, close button and all. */
-  padding-inline-end: var(--inkcap-strip-height);
+  /* A scroll that ends near a tab's edge settles on it, so it does not strand
+     a lone close button at the strip's start; a deliberate scroll to the end
+     still reaches the last close button. */
+  scroll-snap-type: x proximity;
 }
 /* Fade only the side that hides tabs, so a clipped tab reads as scrolled. */
 .inkcap-tabs[data-overflow-start] {

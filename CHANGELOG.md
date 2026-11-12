@@ -1,5 +1,14 @@
 # @fungi.computer/inkcap
 
+## 0.11.1
+
+### Patch Changes
+
+- Changes since 0.11.0:
+
+  - fix(inkcap): phone-width strip targets, whole-tab strip rests, live tree
+    honours hidden dot-files
+
 ## 0.11.0
 
 ### Minor Changes
