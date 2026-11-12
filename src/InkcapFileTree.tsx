@@ -159,7 +159,8 @@ export function InkcapFileTree({
     <aside className="inkcap-tree" aria-label="File tree">
       <div className="inkcap-tree-toolbar">
         <span>
-          <FolderOpen aria-hidden="true" /> Explorer
+          <FolderOpen aria-hidden="true" />{" "}
+          <span className="inkcap-tree-title">Explorer</span>
         </span>
         <span className="inkcap-tree-actions">
           <IconButton

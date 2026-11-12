@@ -13,7 +13,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { FileCode2, FilePlus2, FolderOpen, PanelLeft, X } from "lucide-react";
+import {
+  ChevronsUpDown,
+  FileCode2,
+  FilePlus2,
+  FolderOpen,
+  PanelLeft,
+  X,
+} from "lucide-react";
 import { LoadingState } from "@fungi.computer/caps/blocks/loading-state";
 import { Button } from "@fungi.computer/caps/components/button";
 import { EmptyState } from "@fungi.computer/caps/blocks/empty-state";
@@ -25,6 +32,12 @@ import {
 import { Keycap } from "@fungi.computer/caps/components/keycap";
 import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import { Alert } from "@fungi.computer/caps/components/alert";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@fungi.computer/caps/components/dropdown-menu";
 import {
   Dialog,
   DialogTrigger,
@@ -83,6 +96,8 @@ export type InkcapViewModel = {
   onDiscardWindowClose: () => void;
   onCancelWindowClose: () => void;
   onNewDraft: () => void;
+  /** Counts File, Open File requests; each one reveals Explorer. */
+  browseRequest: number;
   onChooseComputer: () => void;
   onOpenFile: (path: string) => void;
   onActivate: (tabKey: number) => void;
@@ -119,6 +134,8 @@ export function InkcapView({
   const [narrow, setNarrow] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [menuSlot, setMenuSlot] = useState<HTMLElement | null>(null);
+  // Whether the tab strip scrolls: then some open files are off-screen.
+  const [tabsOverflow, setTabsOverflow] = useState(false);
   const root = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = root.current;
@@ -161,6 +178,13 @@ export function InkcapView({
   const setExplorer = (next: boolean | ((value: boolean) => boolean)): void => {
     setExplorerChoice(typeof next === "function" ? next(explorer) : next);
   };
+  const handledBrowse = useRef(model.browseRequest);
+  useEffect(() => {
+    if (handledBrowse.current === model.browseRequest) return;
+    handledBrowse.current = model.browseRequest;
+    if (narrow) setFilesOpen(true);
+    else setExplorerChoice(true);
+  }, [model.browseRequest, narrow]);
   const repository = model.selectedConnection?.source?.kind === "repository";
   const canCreateFile =
     model.canList &&
@@ -243,6 +267,7 @@ export function InkcapView({
       const max = strip.scrollWidth - strip.clientWidth;
       strip.toggleAttribute("data-overflow-start", strip.scrollLeft > 1);
       strip.toggleAttribute("data-overflow-end", strip.scrollLeft < max - 1);
+      setTabsOverflow(max > 1);
     };
     const reveal = () => {
       const tab = strip.querySelector<HTMLElement>('[aria-selected="true"]');
@@ -252,8 +277,17 @@ export function InkcapView({
         const left = tab.offsetLeft - first.offsetLeft;
         const right = close.offsetLeft + close.offsetWidth - first.offsetLeft;
         if (left < strip.scrollLeft) strip.scrollLeft = left;
-        else if (right > strip.scrollLeft + strip.clientWidth)
-          strip.scrollLeft = Math.min(left, right - strip.clientWidth);
+        else if (right > strip.scrollLeft + strip.clientWidth) {
+          // Land on a whole tab's edge, never mid-tab: a cut tab may show only
+          // its close button.
+          const need = right - strip.clientWidth;
+          const edges = Array.from(
+            strip.querySelectorAll<HTMLElement>('[role="tab"]'),
+          )
+            .map((child) => child.offsetLeft - first.offsetLeft)
+            .filter((edge) => edge >= need && edge <= left);
+          strip.scrollLeft = edges[0] ?? left;
+        }
       }
       mark();
     };
@@ -444,6 +478,39 @@ export function InkcapView({
               ))}
             </TabsList>
             <div className="inkcap-tab-actions">
+              {tabsOverflow ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="inkcap-tab-list"
+                        aria-label={`Open files, ${String(model.tabs.length)}`}
+                        title="Open files"
+                      >
+                        <ChevronsUpDown aria-hidden="true" />
+                        <span className="tabular-nums">
+                          {model.tabs.length}
+                        </span>
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end">
+                    {model.tabs.map((tab) => (
+                      <DropdownMenuCheckboxItem
+                        key={tab.tabKey}
+                        checked={tab.tabKey === model.active}
+                        onSelect={() => {
+                          model.onActivate(tab.tabKey);
+                        }}
+                      >
+                        {tab.path.split("/").at(-1)}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
               <IconButton
                 size="responsive"
                 icon={<FilePlus2 />}

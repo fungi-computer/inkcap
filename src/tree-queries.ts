@@ -3,11 +3,12 @@ import { computerList } from "@fungi.computer/agar/computer";
 import { capabilityQuery, queryKeys } from "@fungi.computer/agar/query";
 
 /**
- * Dot-folders (`.fungi`, `.git`) are internal state, so Explorer leaves them
- * out the way editors do. Files, and folders the person named, stay.
+ * Dot-entries (`.fungi`, `.git`, `.bash_history`) are internal state, so
+ * Explorer and the empty state's suggestion leave them out the way file
+ * managers do. Files and folders the person named stay.
  */
 export function isHiddenEntry(entry: { name: string; type: string }): boolean {
-  return entry.type === "directory" && entry.name.startsWith(".");
+  return entry.name.startsWith(".");
 }
 
 /** Explorer and the reopen invitation share the same scoped directory page. */

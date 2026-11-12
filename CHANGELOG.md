@@ -1,5 +1,25 @@
 # @fungi.computer/inkcap
 
+## 0.11.0
+
+### Minor Changes
+
+- Changes since 0.10.2:
+
+  - fix(inkcap): label the Explorer File menu entry Show Files
+  - feat(inkcap): add Open File and Save As to the File menu
+  - fix(inkcap): hide dot-files in Explorer and from the empty state's Open
+    suggestion
+  - fix(inkcap): reserve only the leader chord in App frames, snap tabs to whole
+    edges
+  - fix(inkcap): forward the leader and window-focus chords from App frames, fix
+    the tab strip
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/nacre@0.5.2
+
 ## 0.10.2
 
 ### Patch Changes

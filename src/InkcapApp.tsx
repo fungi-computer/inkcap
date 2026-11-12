@@ -393,8 +393,13 @@ export function useInkcapWorkbench({
     const tabKey = activeRef.current;
     return tabKey === null ? undefined : saveBindings.current.get(tabKey);
   }, []);
+  const [browseRequest, setBrowseRequest] = useState(0);
+  const browseFiles = useCallback(() => {
+    setBrowseRequest((count) => count + 1);
+  }, []);
   useInkcapCommands(connection?.app ?? null, {
     newDraft,
+    browseFiles,
     save: focusedSave,
     openFile: (input) => openFileRef.current(input),
   });
@@ -756,6 +761,7 @@ export function useInkcapWorkbench({
       finishWindowClose(false);
     },
     onNewDraft: newDraft,
+    browseRequest,
     onChooseComputer: () => {
       const app = current.current?.app;
       if (!app) {

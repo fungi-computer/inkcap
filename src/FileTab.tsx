@@ -131,6 +131,7 @@ export function FileTab({
   const savingRef = useRef(document.saving);
   const savableRef = useRef(savable);
   const closedRef = useRef(false);
+  const canSaveAsRef = useRef(false);
   // Read the editor at Save time so the write uses the live document.
   const editorRef = useRef<Editor<unknown> | null>(null);
   const activeRef = useRef(active);
@@ -154,6 +155,7 @@ export function FileTab({
   savingRef.current = document.saving;
   savableRef.current = savable && !document.conflict && !document.resolving;
   closedRef.current = target?.closed ?? false;
+  canSaveAsRef.current = Boolean(onSaveAs && !previewUrl);
   const saveAndAnnounce = async (): Promise<boolean> => {
     if (localRef.current) {
       setSaveAsOpen(true);
@@ -198,6 +200,24 @@ export function FileTab({
         return { status: "available" };
       },
       save: () => saveAndAnnounce(),
+      saveAsAvailability: () => {
+        if (closedRef.current || !canSaveAsRef.current)
+          return {
+            status: "unavailable",
+            reason: "This file cannot be saved as.",
+          };
+        if (!savableRef.current)
+          return {
+            status: "unavailable",
+            reason: "No focused savable document.",
+          };
+        return (target?.saving ?? savingRef.current)
+          ? { status: "unavailable", reason: "A save is already running." }
+          : { status: "available" };
+      },
+      saveAs: () => {
+        setSaveAsOpen(true);
+      },
     }),
     [],
   );

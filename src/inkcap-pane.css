@@ -19,6 +19,13 @@ body,
   /* The tab strip and the explorer header beside it are one 32px band. */
   --inkcap-strip-height: 2rem;
 }
+/* A finger needs the full touch target: the strip grows to it, so every
+   control in it is that tall and no hit area has to spill past the strip. */
+@media (pointer: coarse) {
+  .inkcap-app {
+    --inkcap-strip-height: var(--caps-touch-target, 2.75rem);
+  }
+}
 .inkcap-tree-toolbar > span > svg {
   width: 1rem;
   height: 1rem;
@@ -34,6 +41,9 @@ body,
   flex: 0 0 clamp(10rem, 23%, 15rem);
   min-width: 0;
   min-height: 0;
+  /* The toolbar answers this column's width, never the tab strip beside it. */
+  container-type: inline-size;
+  overflow: hidden;
   background: var(--color-base-200);
   border-inline-end: 1px solid var(--color-base-300);
 }
@@ -69,6 +79,13 @@ body,
   padding-inline: var(--spacing-sm);
   font-size: 0.75rem;
   font-weight: 700;
+}
+/* Three action buttons leave no room for the word beside the icon in the
+   narrowest column; the icon alone still names the pane. */
+@container (max-width: 13rem) {
+  .inkcap-tree-title {
+    display: none;
+  }
 }
 .inkcap-tree-toolbar > span {
   margin-inline-end: auto;
@@ -111,8 +128,9 @@ body,
   height: var(--inkcap-strip-height);
   background: var(--color-base-200);
 }
-/* Phones lift Caps buttons to a 44px touch target; the strip is 32px, so its
-   buttons stay at the strip's height instead of overflowing it. */
+/* Caps lifts buttons to a 44px touch target on touch screens; the strip is
+   32px on a pointer, so its buttons stay at the strip's height instead of
+   overflowing it. */
 .inkcap-tab-bar .caps-button,
 .inkcap-tab-bar .caps-icon-button-responsive {
   min-width: var(--inkcap-strip-height);
@@ -132,6 +150,12 @@ body,
   flex: 1;
   min-width: 0;
   overflow-x: auto;
+  /* Rest only on a whole tab's edge, so a scroll never strands a lone close
+     button at the strip's start. */
+  scroll-snap-type: x mandatory;
+  /* Room to scroll the last tab's edge to the start, so the tab before it can
+     hide whole, close button and all. */
+  padding-inline-end: var(--inkcap-strip-height);
 }
 /* Fade only the side that hides tabs, so a clipped tab reads as scrolled. */
 .inkcap-tabs[data-overflow-start] {
@@ -149,8 +173,19 @@ body,
     transparent
   );
 }
+/* Open files off-screen: a count that opens the whole list. */
+.inkcap-tab-list {
+  gap: var(--spacing-2xs);
+  padding-inline: var(--spacing-xs);
+  font-size: 0.75rem;
+}
+.inkcap-tab-list > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
 .inkcap-tab {
   flex: none;
+  scroll-snap-align: start;
   max-width: 16rem;
   min-width: 0;
   height: 100%;

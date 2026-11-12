@@ -33,8 +33,9 @@ export type InkcapScenario =
   | "readonly"
   | "activity-error";
 export const projectPath = "/field-notes";
-/** A new Computer's workspace: only folders other Apps made, nothing the person wrote. */
+/** A new Computer's workspace: a shell history and folders other Apps made, nothing the person wrote. */
 const firstRunFiles = {
+  "/workspace/.bash_history": "ls\n",
   "/workspace/.fungi/skills/readme.txt": "internal",
   "/workspace/prints/leaf.png": "",
 };

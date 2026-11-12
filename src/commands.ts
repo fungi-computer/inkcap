@@ -18,6 +18,18 @@ const INKCAP_NEW_DRAFT_COMMAND = {
   action: { presentation: { type: "action" } },
 } satisfies AppCommand;
 
+const INKCAP_BROWSE_FILES_COMMAND = {
+  id: "browse-files",
+  title: "Show Files",
+  category: "File",
+  description: "Choose a file to open from Explorer",
+  projections: {
+    menu: { order: 1 },
+    palette: { order: 2 },
+  },
+  action: { presentation: { type: "action" } },
+} satisfies AppCommand;
+
 const INKCAP_SAVE_COMMAND = {
   id: "save",
   title: "Save",
@@ -25,8 +37,20 @@ const INKCAP_SAVE_COMMAND = {
   description: "Save the focused Inkcap document",
   projections: {
     bindings: { values: ["mod+s"], order: 1 },
-    menu: { order: 1 },
+    menu: { order: 2 },
     palette: { order: 1 },
+  },
+  action: { presentation: { type: "action" } },
+} satisfies AppCommand;
+
+const INKCAP_SAVE_AS_COMMAND = {
+  id: "save-as",
+  title: "Save As\u2026",
+  category: "File",
+  description: "Save the focused Inkcap document under a new path",
+  projections: {
+    menu: { order: 3 },
+    palette: { order: 3 },
   },
   action: { presentation: { type: "action" } },
 } satisfies AppCommand;
@@ -36,7 +60,7 @@ const INKCAP_OPEN_FILE_COMMAND = {
   title: "Open File",
   category: "File",
   description: "Open a file handed off by another App",
-  projections: { menu: { order: 2 } },
+  projections: { menu: { order: 4 } },
   action: {
     inputSchema: {
       type: "object",
@@ -72,11 +96,17 @@ export type InkcapSaveAvailability =
 export type InkcapSaveBinding = Readonly<{
   availability: () => InkcapSaveAvailability;
   save: () => Promise<boolean>;
+  /** Whether Save As applies to this document now. */
+  saveAsAvailability: () => InkcapSaveAvailability;
+  /** Ask where to save a copy; the dialog owns the rest. */
+  saveAs: () => void;
 }>;
 
 /** The live workbench actions; the focused document remains the Save owner. */
 export type InkcapCommandBinding = Readonly<{
   newDraft: () => void;
+  /** Reveal Explorer so a file can be chosen. */
+  browseFiles: () => void;
   save?: () => InkcapSaveBinding | undefined;
   openFile?: (input: InkcapOpenFileInput) => Promise<void>;
 }>;
@@ -104,6 +134,14 @@ export function useInkcapCommands(
       : availability
         ? undefined
         : "No focused savable dirty document.";
+  const saveAsAvailability = binding.save?.()?.saveAsAvailability();
+  const saveAsStatus = saveAsAvailability?.status ?? "unavailable";
+  const saveAsReason =
+    saveAsAvailability?.status === "unavailable"
+      ? saveAsAvailability.reason
+      : saveAsAvailability
+        ? undefined
+        : "No open file to save as.";
   const build = useCallback<() => readonly WhistleCommand<never>[]>(() => {
     const active = (signal?: AbortSignal) => {
       if (
@@ -120,6 +158,12 @@ export function useInkcapCommands(
         ...INKCAP_NEW_DRAFT_COMMAND,
         handler: ({ signal }) => {
           active(signal)?.newDraft();
+        },
+      },
+      {
+        ...INKCAP_BROWSE_FILES_COMMAND,
+        handler: ({ signal }) => {
+          active(signal)?.browseFiles();
         },
       },
       {
@@ -144,6 +188,26 @@ export function useInkcapCommands(
         },
       },
       {
+        ...INKCAP_SAVE_AS_COMMAND,
+        availability: () =>
+          saveAsStatus === "available"
+            ? { status: "available" }
+            : {
+                status: "unavailable",
+                reason: saveAsReason ?? "No open file to save as.",
+              },
+        handler: ({ signal }) => {
+          const binding = active(signal);
+          if (!binding) return;
+          const save = binding.save?.();
+          if (!save) throw new Error("No open file to save as.");
+          const availability = save.saveAsAvailability();
+          if (availability.status === "unavailable")
+            throw new Error(availability.reason);
+          save.saveAs();
+        },
+      },
+      {
         ...INKCAP_OPEN_FILE_COMMAND,
         handler: async ({ arguments: value, signal }) => {
           const binding = active(signal);
@@ -164,7 +228,7 @@ export function useInkcapCommands(
         },
       },
     ];
-  }, [app, status, reason]);
+  }, [app, status, reason, saveAsStatus, saveAsReason]);
   useAppCommandCatalog(
     app,
     { sourceId: "inkcap-file", namespace: "inkcap" },
