@@ -22,6 +22,7 @@ export type InkcapScenario =
   | "videos"
   | "dirty"
   | "empty"
+  | "first-run"
   | "saving"
   | "failed-save"
   | "unavailable"
@@ -32,6 +33,11 @@ export type InkcapScenario =
   | "readonly"
   | "activity-error";
 export const projectPath = "/field-notes";
+/** A new Computer's workspace: only folders other Apps made, nothing the person wrote. */
+const firstRunFiles = {
+  "/workspace/.fungi/skills/readme.txt": "internal",
+  "/workspace/prints/leaf.png": "",
+};
 /** A generated-image name far longer than a tab, as Prints saves them. */
 const longImageName = "generated-wavy-ergot-tinderbox-sclerotium.svg";
 const sampleSvg =
@@ -97,7 +103,11 @@ export function createInkcapFixture(
   },
 ) {
   const files = new Map<string, string>(
-    scenario === "empty" ? [] : Object.entries(samples),
+    scenario === "empty"
+      ? []
+      : scenario === "first-run"
+        ? Object.entries(firstRunFiles)
+        : Object.entries(samples),
   );
   if (scenario === "images") {
     files.set(

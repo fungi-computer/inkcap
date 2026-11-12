@@ -15,7 +15,7 @@ import {
   TREE_ROW_HEIGHT_PX,
   useInkcapTreeModel,
 } from "./useInkcapTreeModel.js";
-import { directoryForTreePath, resolveComputerPath } from "./tree-path.js";
+import { directoryWithin, resolveComputerPath } from "./tree-path.js";
 import { CreateEntryDialog, type EntryLocation } from "./CreateEntryDialog.js";
 
 const nameTaken = "That name already exists in this directory.";
@@ -65,14 +65,14 @@ export function InkcapFileTree({
   const canWrite = app.capabilities.has(computerWriteFile);
 
   function startCreation(kind: "file" | "folder", path: string): void {
-    setCreation({ kind, directory: directoryForTreePath(path) });
+    setCreation({ kind, directory: directoryWithin(path, rootPath) });
   }
 
   useEffect(() => {
     if (!creationRequest) return;
     const request: EntryLocation = {
       kind: creationRequest.kind,
-      directory: directoryForTreePath(selectedPath ?? `${rootPath}/`),
+      directory: directoryWithin(selectedPath ?? `${rootPath}/`, rootPath),
     };
     if (creationRequest.name !== undefined) request.name = creationRequest.name;
     if (

@@ -1,5 +1,20 @@
 # @fungi.computer/inkcap
 
+## 0.10.1
+
+### Patch Changes
+
+- Changes since 0.10.0:
+
+  - fix(inkcap): keep the first-run fixture files private to the fixture
+  - fix(inkcap): create files in the workspace, hide dot-folders, keep phone
+    tabs reachable
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/caps@0.11.1
+  - @fungi.computer/nacre@0.5.1
+
 ## 0.10.0
 
 ### Minor Changes

@@ -22,6 +22,7 @@ import { emptyTabHistory, tabHistory } from "./tab-history.js";
 import { useInkcapCommands } from "./commands.js";
 import type { InkcapOpenFileInput, InkcapSaveBinding } from "./commands.js";
 import { readOpenedFile } from "./open-file.js";
+import { computerHomePath } from "./computer-home.js";
 import type { OpenTarget } from "./read-for-open.js";
 import { InkcapView, type InkcapViewModel } from "./InkcapView.js";
 import type { OpenedFile } from "./open-file.js";
@@ -69,7 +70,7 @@ export type Tab = {
 const defaultContext: InkcapContext = {
   computerId: null,
   computerName: null,
-  projectPath: "/",
+  projectPath: computerHomePath,
 };
 
 const liveFileOperations: InkcapFileOperations = {

@@ -12,6 +12,19 @@ export function directoryForTreePath(path: string): string {
   return separator <= 0 ? "/" : path.slice(0, separator);
 }
 
+/**
+ * Where a selection creates or saves: its own directory, unless that sits
+ * outside the Explorer root (the root row itself, or a stale selection), which
+ * falls back to the root so a file never lands beside the person's home.
+ */
+export function directoryWithin(path: string, root: string): string {
+  const directory = directoryForTreePath(path);
+  const base = root.replace(/\/+$/u, "") || "/";
+  return base === "/" || directory === base || directory.startsWith(`${base}/`)
+    ? directory
+    : base;
+}
+
 // Only a file-name-looking title keeps its extension: no whitespace, letters only.
 const knownExtension = /^([^\s]+?)(\.[a-z]{1,8})$/iu;
 

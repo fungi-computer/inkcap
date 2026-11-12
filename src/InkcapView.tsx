@@ -35,7 +35,11 @@ import {
   DialogFooter,
 } from "@fungi.computer/caps/components/dialog";
 import { useWindowStatus } from "@fungi.computer/agar/react";
-import { directoryForTreePath, resolveComputerPath } from "./tree-path.js";
+import {
+  directoryForTreePath,
+  directoryWithin,
+  resolveComputerPath,
+} from "./tree-path.js";
 import { repositoryFilePath } from "@fungi.computer/agar/roles/files";
 import type { FileSaveResult } from "@fungi.computer/agar/roles/files";
 import type { InkcapSaveBinding } from "./commands.js";
@@ -171,7 +175,7 @@ export function InkcapView({
     selectedTreePath &&
     model.selectedConnection &&
     (tab.connection === null || tab.connection === model.selectedConnection)
-      ? directoryForTreePath(selectedTreePath)
+      ? directoryWithin(selectedTreePath, model.context.projectPath)
       : tab.path.startsWith("/")
         ? directoryForTreePath(tab.path)
         : model.context.projectPath;
@@ -215,31 +219,11 @@ export function InkcapView({
     },
   ]);
   const active = model.tabs.find((tab) => tab.tabKey === model.active);
-  // A narrow strip scrolls: when the open file's tab is not fully visible,
-  // start the strip at that tab so earlier tabs sit fully off to the left. The
-  // strip gets just enough trailing room for that, only while it overflows.
-  useEffect(() => {
-    const strip = root.current?.querySelector<HTMLElement>(".inkcap-tabs");
-    const tab = strip?.querySelector<HTMLElement>('[aria-selected="true"]');
-    const first = strip?.firstElementChild;
-    const last = strip?.lastElementChild;
-    if (!strip || !tab || !(first instanceof HTMLElement)) return;
-    if (!(last instanceof HTMLElement)) return;
-    const content = last.offsetLeft + last.offsetWidth - first.offsetLeft;
-    if (content <= strip.clientWidth) {
-      strip.style.removeProperty("--inkcap-tabs-tail");
-      return;
-    }
-    const left = tab.offsetLeft - first.offsetLeft;
-    const right = left + tab.offsetWidth;
-    strip.style.setProperty(
-      "--inkcap-tabs-tail",
-      `${String(Math.max(0, left + strip.clientWidth - content))}px`,
-    );
-    if (left < strip.scrollLeft || right > strip.scrollLeft + strip.clientWidth)
-      strip.scrollLeft = left;
-  }, [model.active, model.tabs.length, narrow]);
-  // Mark which sides of the tab strip hide tabs, so CSS can fade only those.
+  // A narrow strip scrolls. Keep the open file's tab, with its close button,
+  // fully inside the strip by the shortest scroll, so the neighbouring tab
+  // stays partly visible under the edge fade instead of hiding off-screen.
+  // Mark which sides hide tabs so CSS fades only those. Tab widths settle after
+  // first paint (fonts, names), so a resize of the strip or any tab repeats it.
   useEffect(() => {
     const strip = root.current?.querySelector<HTMLElement>(".inkcap-tabs");
     if (!strip) return;
@@ -248,11 +232,25 @@ export function InkcapView({
       strip.toggleAttribute("data-overflow-start", strip.scrollLeft > 1);
       strip.toggleAttribute("data-overflow-end", strip.scrollLeft < max - 1);
     };
-    mark();
+    const reveal = () => {
+      const tab = strip.querySelector<HTMLElement>('[aria-selected="true"]');
+      const first = strip.firstElementChild;
+      const close = tab?.nextElementSibling;
+      if (tab && first instanceof HTMLElement && close instanceof HTMLElement) {
+        const left = tab.offsetLeft - first.offsetLeft;
+        const right = close.offsetLeft + close.offsetWidth - first.offsetLeft;
+        if (left < strip.scrollLeft) strip.scrollLeft = left;
+        else if (right > strip.scrollLeft + strip.clientWidth)
+          strip.scrollLeft = Math.min(left, right - strip.clientWidth);
+      }
+      mark();
+    };
+    reveal();
     strip.addEventListener("scroll", mark, { passive: true });
     const observer =
-      "ResizeObserver" in globalThis ? new ResizeObserver(mark) : null;
+      "ResizeObserver" in globalThis ? new ResizeObserver(reveal) : null;
     observer?.observe(strip);
+    for (const child of strip.children) observer?.observe(child);
     return () => {
       strip.removeEventListener("scroll", mark);
       observer?.disconnect();

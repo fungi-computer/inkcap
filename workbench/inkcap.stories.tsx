@@ -4,6 +4,7 @@ import type { StoryDefault } from "@ladle/react";
 import { useEffect, useRef, useState } from "react";
 import type { AppBackHandler } from "@fungi.computer/agar";
 import { InkcapApp } from "../src/InkcapApp.js";
+import { projectPathFor } from "../src/computer-home.js";
 import {
   createInkcapFixture,
   projectPath,
@@ -56,6 +57,7 @@ function Workbench({
       if (
         !connected ||
         scenario === "empty" ||
+        scenario === "first-run" ||
         scenario === "unavailable" ||
         scenario === "no-computer-selected" ||
         scenario === "tree-loading" ||
@@ -136,7 +138,8 @@ function Workbench({
             context={{
               computerId: fixture.computerId,
               computerName: "Workbench",
-              projectPath,
+              projectPath:
+                scenario === "first-run" ? projectPathFor(null) : projectPath,
             }}
           />
         </QueryClientProvider>
@@ -150,6 +153,7 @@ export const Images = () => <Workbench scenario="images" />;
 export const Videos = () => <Workbench scenario="videos" />;
 export const DirtyDocument = () => <Workbench scenario="dirty" />;
 export const Empty = () => <Workbench scenario="empty" />;
+export const FirstRun = () => <Workbench scenario="first-run" />;
 export const Saving = () => <Workbench scenario="saving" />;
 export const FailedSave = () => <Workbench scenario="failed-save" />;
 export const UnavailableComputer = () => <Workbench scenario="unavailable" />;

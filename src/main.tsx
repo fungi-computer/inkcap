@@ -5,6 +5,7 @@ import { mountApp } from "@fungi.computer/agar/react";
 import "./inkcap.css";
 import "@fungi.computer/caps/fonts.css";
 import { InkcapEntry } from "./InkcapEntry.js";
+import { projectPathFor } from "./computer-home.js";
 
 const root = document.getElementById("inkcap-root");
 if (!root) throw new Error("Inkcap root is missing");
@@ -15,7 +16,6 @@ const location = Schema.decodeUnknownSync(
     computerName: Schema.NullOr(Schema.String),
   }),
 )({ project: params.get("project"), computerName: params.get("computerName") });
-const projectPath = location.project?.trim() ?? "/";
 mountApp(
   root,
   { name: "Inkcap", queryClient: createQueryClient() },
@@ -23,8 +23,6 @@ mountApp(
     createElement(InkcapEntry, {
       app,
       computerName: location.computerName,
-      projectPath: projectPath.startsWith("/")
-        ? projectPath
-        : `/${projectPath}`,
+      projectPath: projectPathFor(location.project),
     }),
 );

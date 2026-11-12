@@ -160,7 +160,8 @@ export function useInkcapTreeModel({
   const { model } = useFileTree({
     paths: [],
     itemHeight: rowHeight,
-    initialExpansion: 1,
+    initialExpansion: 2,
+    flattenEmptyDirectories: false,
     composition: { contextMenu: { enabled: true } },
     // Pierre's FileTree model is constructed once; read the live root label
     // through the same ref the selection handler uses to avoid a stale close.
