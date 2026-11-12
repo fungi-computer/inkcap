@@ -5,6 +5,7 @@ import {
   useAppContext,
   useComputerId,
   useHostNavigation,
+  useStore,
 } from "@fungi.computer/agar/react";
 import { queryKeys } from "@fungi.computer/agar/query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,16 +14,18 @@ import { AppError } from "@fungi.computer/agar/errors";
 import { readFilesLocation } from "@fungi.computer/agar/roles/files";
 import {
   computerList,
+  listComputerFiles,
   type ComputerFileReplacementInput,
   replaceComputerFileIfUnchanged,
   writeComputerFile,
 } from "@fungi.computer/agar/computer";
-import { useCallback, useEffect, useRef, useState, useReducer } from "react";
-import { emptyTabHistory, tabHistory } from "./tab-history.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createTabHistory, visitTab, withoutTab } from "./tab-history.js";
 import { useInkcapCommands } from "./commands.js";
 import type { InkcapOpenFileInput, InkcapSaveBinding } from "./commands.js";
 import { readOpenedFile } from "./open-file.js";
 import { computerHomePath } from "./computer-home.js";
+import { pathExists, type TargetCheck } from "./path-exists.js";
 import type { OpenTarget } from "./read-for-open.js";
 import { InkcapView, type InkcapViewModel } from "./InkcapView.js";
 import type { OpenedFile } from "./open-file.js";
@@ -55,6 +58,8 @@ export type InkcapFileOperations = Readonly<{
     contents: string,
     signal: AbortSignal,
   ) => Promise<void>;
+  /** Whether a file is there, by listing its folder; a failed listing rejects. */
+  exists: (app: AppRoot, path: string, signal: AbortSignal) => Promise<boolean>;
 }>;
 export type Tab = {
   tabKey: number;
@@ -74,6 +79,24 @@ const defaultContext: InkcapContext = {
 };
 
 const liveFileOperations: InkcapFileOperations = {
+  exists: (app, path, signal) =>
+    pathExists(path, async (directory, name) => {
+      let offset: number | null = 0;
+      while (offset !== null) {
+        const requested: number = offset;
+        const page = await listComputerFiles(app.capabilities, {
+          path: directory,
+          limit: 256,
+          offset: requested,
+        });
+        signal.throwIfAborted();
+        if (page.entries.some((entry) => entry.name === name)) return true;
+        if (page.nextOffset !== null && page.nextOffset <= requested)
+          throw new Error("The folder listing did not advance.");
+        offset = page.nextOffset;
+      }
+      return false;
+    }),
   read: (app, path, signal, target) =>
     readOpenedFile(app, path, signal, target),
   replace: async (app, input, signal) => {
@@ -229,6 +252,7 @@ export function useInkcapWorkbench({
           ),
         write: (path, contents, signal) =>
           files.write(selected.app, path, contents, signal),
+        exists: (path, signal) => files.exists(selected.app, path, signal),
       }
     );
   }
@@ -244,21 +268,23 @@ export function useInkcapWorkbench({
       }
     : context;
   const [tabs, setTabs] = useState<Tab[]>([]);
-  const [history, navigate] = useReducer(tabHistory, emptyTabHistory);
-  const active = history.entries[history.index] ?? null;
-  const goBack = useCallback(() => {
-    if (history.index <= 0) return false;
-    navigate({ type: "back" });
-    return true;
-  }, [history.index]);
+  const [history, setHistory] = useState(createTabHistory);
+  const {
+    current: active,
+    canGoBack,
+    canGoForward,
+  } = useStore(history) ?? history.get();
+  // Closing a tab swaps the history, so late callers read the live one.
+  const historyRef = useRef(history);
+  historyRef.current = history;
   useHostNavigation(connection?.app.window.navigation, {
-    canGoBack: history.index > 0,
-    canGoForward: false,
-    onForward: () => false,
-    onBack: goBack,
+    canGoBack,
+    canGoForward,
+    onBack: () => historyRef.current.back(),
+    onForward: () => historyRef.current.forward(),
   });
   const activate = useCallback((key: number) => {
-    navigate({ type: "visit", key });
+    visitTab(historyRef.current, key);
   }, []);
   const [closing, setClosing] = useState<number | null>(null);
   const [windowClosing, setWindowClosing] = useState(false);
@@ -380,7 +406,7 @@ export function useInkcapWorkbench({
     replacement.target.closed = true;
     revoke(replacement);
     setTabs((items) => items.filter((item) => item.tabKey !== tabKey));
-    navigate({ type: "remove", key: tabKey });
+    setHistory((items) => withoutTab(items, tabKey));
   }
 
   async function recordActivity(
@@ -511,7 +537,7 @@ export function useInkcapWorkbench({
     revoke(tab);
     setClosing((request) => (request === tabKey ? null : request));
     setTabs((items) => items.filter((item) => item.tabKey !== tabKey));
-    navigate({ type: "remove", key: tabKey });
+    setHistory((items) => withoutTab(items, tabKey));
   }
 
   useEffect(() => {
@@ -800,6 +826,39 @@ export function useInkcapWorkbench({
               : item,
           ),
         );
+    },
+    onPathExists: async (tab, path): Promise<TargetCheck> => {
+      const selected = tab.connection ?? current.current;
+      if (
+        !selected ||
+        (selected.source?.kind !== "repository" &&
+          selected.app.context.get().computerId === null)
+      )
+        return "absent";
+      const intendedComputer =
+        selected.source?.kind === "repository"
+          ? null
+          : tab.connection
+            ? tab.computerId
+            : selected.app.context.get().computerId;
+      try {
+        const found = await withSource(selected, intendedComputer, (signal) =>
+          sourceFor(selected).exists(path, signal),
+        );
+        return found ? "exists" : "absent";
+      } catch (cause) {
+        // Never save over a file we could not check; the dialog stays open.
+        console.error("Inkcap existence check failed", cause);
+        void selected.app.ui
+          .showToast({
+            message: `Couldn't check whether ${path.split("/").at(-1) ?? path} exists. Nothing was saved.`,
+            tone: "error",
+          })
+          .catch((error: unknown) => {
+            console.error("Inkcap check toast failed", error);
+          });
+        return "unchecked";
+      }
     },
     onPathChange: (tab, nextPath) => {
       setTabs((items) =>

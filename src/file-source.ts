@@ -18,4 +18,6 @@ export type InkcapFileSource = Readonly<{
     signal: AbortSignal,
   ): Promise<void>;
   write(path: string, contents: string, signal: AbortSignal): Promise<void>;
+  /** Whether a file is there; a listing that cannot be read rejects. */
+  exists(path: string, signal: AbortSignal): Promise<boolean>;
 }>;

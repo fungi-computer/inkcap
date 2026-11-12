@@ -2,7 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createQueryClient } from "@fungi.computer/agar/query";
 import type { StoryDefault } from "@ladle/react";
 import { useEffect, useRef, useState } from "react";
-import type { AppBackHandler } from "@fungi.computer/agar";
+import type { AppBackHandler, AppForwardHandler } from "@fungi.computer/agar";
 import { InkcapApp } from "../src/InkcapApp.js";
 import { projectPathFor } from "../src/computer-home.js";
 import {
@@ -32,15 +32,23 @@ function Workbench({
     [queryClient],
   );
   const [canGoBack, setCanGoBack] = useState(false);
+  const [canGoForward, setCanGoForward] = useState(false);
   const back = useRef<AppBackHandler>();
+  const forward = useRef<AppForwardHandler>();
   const [fixture] = useState(() =>
     createInkcapFixture(scenario, undefined, undefined, {
       publish: (state) => {
         setCanGoBack(state.canGoBack);
+        setCanGoForward(state.canGoForward);
         return Promise.resolve();
       },
       onActivate: () => () => undefined,
-      onForward: () => () => undefined,
+      onForward: (handler) => {
+        forward.current = handler;
+        return () => {
+          if (forward.current === handler) forward.current = undefined;
+        };
+      },
       onBack: (handler) => {
         back.current = handler;
         return () => {
@@ -85,6 +93,15 @@ function Workbench({
           }}
         >
           Host Back
+        </button>
+        <button
+          type="button"
+          disabled={!canGoForward}
+          onClick={() => {
+            void forward.current?.();
+          }}
+        >
+          Host Forward
         </button>
         <button
           type="button"

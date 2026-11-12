@@ -1,5 +1,17 @@
 # @fungi.computer/inkcap
 
+## 0.10.2
+
+### Patch Changes
+
+- Changes since 0.10.1:
+
+  - fix(inkcap): name the tab history type in its public signatures
+  - fix(inkcap): report Save As target checks as typed results
+  - fix(inkcap): let Save As into a new folder through the existence check
+  - fix(inkcap): check Save As targets by listing and never save on failure
+  - fix(inkcap): redo history with createAppHistory and confirm Save As replace
+
 ## 0.10.1
 
 ### Patch Changes

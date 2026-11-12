@@ -5,6 +5,7 @@ import {
   fileContent,
   fileDiscardInput,
   fileDiscardResult,
+  fileList,
   fileSaveInput,
   fileSaveResult,
   fileSyncResult,
@@ -238,6 +239,18 @@ export function bonsaiFileSource({
     replace: (path, text, expectedContent, signal) =>
       save(path, text, expectedContent, signal),
     write: (path, text, signal) => save(path, text, undefined, signal),
+    async exists(path, signal) {
+      signal.throwIfAborted();
+      const files = fileList.parse(
+        await request("files.list", { repo: repository, ref: branch }),
+      );
+      signal.throwIfAborted();
+      if (files.paths.includes(path)) return true;
+      // A truncated list cannot prove the file is absent.
+      if (files.truncated)
+        throw new Error("The repository file list is incomplete.");
+      return false;
+    },
     retry: sync,
     async discard(path, signal) {
       signal.throwIfAborted();

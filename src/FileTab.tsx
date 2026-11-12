@@ -1,3 +1,4 @@
+import type { TargetCheck } from "./path-exists.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditProvider, File as DiffsFile } from "@pierre/diffs/react";
@@ -51,6 +52,7 @@ export function FileTab({
   previewKind,
   onReopen,
   onSaveAs,
+  pathExists,
   onPathChange,
   target,
   write,
@@ -79,6 +81,8 @@ export function FileTab({
   previewKind?: "image" | "video";
   onReopen?: () => void;
   onSaveAs?: (path: string, contents: string) => Promise<string>;
+  /** Whether Save As to this path would replace another file. */
+  pathExists?: (path: string) => Promise<TargetCheck>;
   onPathChange?: (path: string) => void;
   target?: DocumentTarget;
   write: (contents: string, expectedContent: string) => Promise<void>;
@@ -239,6 +243,7 @@ export function FileTab({
       previewUrl={previewUrl}
       previewKind={previewKind}
       onSaveAs={onSaveAs}
+      pathExists={downloads ? undefined : pathExists}
       onSave={saveAndAnnounce}
       onSubmitSaveAs={saveAsAndAnnounce}
       saveAsDirectory={downloads ? null : (saveAsDirectory ?? null)}
@@ -273,6 +278,7 @@ function FileTabLayout({
   previewUrl,
   previewKind,
   onSaveAs,
+  pathExists,
   onSave,
   onSubmitSaveAs,
   saveAsDirectory,
@@ -301,6 +307,7 @@ function FileTabLayout({
   previewUrl?: string;
   previewKind?: "image" | "video";
   onSaveAs?: (path: string, contents: string) => Promise<string>;
+  pathExists?: (path: string) => Promise<TargetCheck>;
   onSave: () => Promise<boolean>;
   onSubmitSaveAs: (path: string) => Promise<boolean>;
   saveAsDirectory: string | null;
@@ -417,6 +424,7 @@ function FileTabLayout({
         downloads={downloads}
         open={saveAsOpen}
         busy={document.saving}
+        pathExists={pathExists}
         onSubmit={onSubmitSaveAs}
         onOpenChange={setSaveAsOpen}
       />
@@ -649,6 +657,7 @@ function SaveAsDialog({
   downloads,
   open,
   busy,
+  pathExists,
   onSubmit,
   onOpenChange,
 }: {
@@ -660,12 +669,29 @@ function SaveAsDialog({
   downloads: boolean;
   open: boolean;
   busy: boolean;
+  pathExists?: (path: string) => Promise<TargetCheck>;
   onSubmit: (path: string) => Promise<boolean>;
   onOpenChange: (open: boolean) => void;
 }): React.JSX.Element {
+  // The path waiting for a Replace or Cancel, when it names another file.
+  const [replacing, setReplacing] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const confirmed = useRef<string | null>(null);
+  const reselect = useRef(false);
   const form = useForm({
     defaultValues: { path },
     onSubmit: async ({ value }) => {
+      if (confirmed.current !== value.path && pathExists) {
+        const found = await pathExists(value.path);
+        // The host already told the person the check failed; nothing is
+        // saved and the dialog stays open.
+        if (found === "unchecked") return;
+        if (found === "exists") {
+          setReplacing(value.path);
+          return;
+        }
+      }
+      confirmed.current = null;
       if (await onSubmit(value.path)) onOpenChange(false);
     },
   });
@@ -676,8 +702,31 @@ function SaveAsDialog({
   const startPath = useRef(path);
   startPath.current = path;
   useEffect(() => {
-    if (open) form.setFieldValue("path", startPath.current);
+    if (!open) return;
+    confirmed.current = null;
+    setReplacing(null);
+    form.setFieldValue("path", startPath.current);
   }, [open]);
+  const keepEditing = () => {
+    confirmed.current = null;
+    reselect.current = true;
+    setReplacing(null);
+  };
+  // Back to the name, selected, once the field is enabled again.
+  useEffect(() => {
+    if (replacing !== null || !reselect.current) return;
+    reselect.current = false;
+    const field = input.current;
+    if (!field) return;
+    field.focus();
+    const [start, end] = nameRange(field.value);
+    field.setSelectionRange(start, end);
+  }, [replacing]);
+  const replace = () => {
+    confirmed.current = replacing;
+    setReplacing(null);
+    void form.handleSubmit();
+  };
   return (
     <Dialog
       open={open && !(sourceLabel && busy)}
@@ -733,6 +782,7 @@ function SaveAsDialog({
                       if (!formBusy) void form.handleSubmit();
                     }
                   }}
+                  ref={input}
                   autoFocus
                   onFocus={(event) => {
                     if (!selectName) return;
@@ -740,30 +790,48 @@ function SaveAsDialog({
                     const [start, end] = nameRange(input.value);
                     input.setSelectionRange(start, end);
                   }}
-                  disabled={formBusy}
+                  disabled={formBusy || replacing !== null}
                   required
                 />
               </Field>
             )}
           </form.Field>
-          <DialogFooter>
-            <DialogClose disabled={formBusy}>Cancel</DialogClose>
-            <Button
-              type="button"
-              disabled={formBusy}
-              onClick={() => {
-                void form.handleSubmit();
-              }}
-            >
-              {downloads
-                ? formBusy
-                  ? "Downloading…"
-                  : "Download"
-                : formBusy
-                  ? "Saving…"
-                  : "Save"}
-            </Button>
-          </DialogFooter>
+          {replacing !== null ? (
+            <>
+              <Alert
+                tone="warning"
+                role="alert"
+                title={`${leafOf(replacing)} already exists. Replace it?`}
+              />
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={keepEditing}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={replace}>
+                  Replace
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <DialogFooter>
+              <DialogClose disabled={formBusy}>Cancel</DialogClose>
+              <Button
+                type="button"
+                disabled={formBusy}
+                onClick={() => {
+                  void form.handleSubmit();
+                }}
+              >
+                {downloads
+                  ? formBusy
+                    ? "Downloading…"
+                    : "Download"
+                  : formBusy
+                    ? "Saving…"
+                    : "Save"}
+              </Button>
+            </DialogFooter>
+          )}
         </div>
       </DialogContent>
     </Dialog>

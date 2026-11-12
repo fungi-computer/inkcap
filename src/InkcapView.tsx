@@ -1,3 +1,4 @@
+import type { TargetCheck } from "./path-exists.js";
 import { useQuery } from "@tanstack/react-query";
 import { describeAppError } from "@fungi.computer/agar/errors";
 import { FailureLine } from "@fungi.computer/caps/components/failure-line";
@@ -91,6 +92,8 @@ export type InkcapViewModel = {
   onCancelClose: () => void;
   onReopen: (tab: Tab) => void;
   onSaveAs: (tab: Tab, path: string, contents: string) => Promise<void>;
+  /** Whether Save As to this resolved path would replace another file. */
+  onPathExists: (tab: Tab, path: string) => Promise<TargetCheck>;
   onPathChange: (tab: Tab, path: string) => void;
   onStatus: (tab: Tab, dirty: boolean, saving: boolean) => void;
   onSaveBinding: (
@@ -194,6 +197,15 @@ export function InkcapView({
     return target.source?.kind === "repository"
       ? directory.replace(/^\/+/u, "") || null
       : directory;
+  };
+  const savePath = (tab: Tab, path: string): string => {
+    const directory = explorerDirectory(tab);
+    return (tab.connection ?? model.selectedConnection)?.source?.kind ===
+      "repository"
+      ? repositoryFilePath.parse(path.trim())
+      : tab.connection || model.selectedConnection
+        ? resolveComputerPath(path, directory)
+        : path.trim();
   };
   const computer =
     model.sourceLabel ?? model.context.computerName ?? "Computer";
@@ -497,16 +509,16 @@ export function InkcapView({
                 downloads={downloadsFor(tab)}
                 onSaved={model.onSaved}
                 onSaveAs={async (path, contents) => {
-                  const directory = explorerDirectory(tab);
-                  const acceptedPath =
-                    (tab.connection ?? model.selectedConnection)?.source
-                      ?.kind === "repository"
-                      ? repositoryFilePath.parse(path.trim())
-                      : tab.connection || model.selectedConnection
-                        ? resolveComputerPath(path, directory)
-                        : path.trim();
+                  const acceptedPath = savePath(tab, path);
                   await model.onSaveAs(tab, acceptedPath, contents);
                   return acceptedPath;
+                }}
+                pathExists={async (path) => {
+                  const target = savePath(tab, path);
+                  // Saving a file onto its own path just saves it.
+                  return target === tab.path
+                    ? "absent"
+                    : await model.onPathExists(tab, target);
                 }}
                 onPathChange={(path) => {
                   model.onPathChange(tab, path);
