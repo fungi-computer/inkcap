@@ -1,3 +1,4 @@
+import { saveAvailability } from "./save-availability.js";
 import type { TargetCheck } from "./path-exists.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -130,6 +131,7 @@ export function FileTab({
   const downloadsRef = useRef(downloads);
   const savingRef = useRef(document.saving);
   const savableRef = useRef(savable);
+  const dirtyRef = useRef(false);
   const closedRef = useRef(false);
   const canSaveAsRef = useRef(false);
   // Read the editor at Save time so the write uses the live document.
@@ -154,6 +156,7 @@ export function FileTab({
   downloadsRef.current = downloads;
   savingRef.current = document.saving;
   savableRef.current = savable && !document.conflict && !document.resolving;
+  dirtyRef.current = document.dirty;
   closedRef.current = target?.closed ?? false;
   canSaveAsRef.current = Boolean(onSaveAs && !previewUrl);
   const saveAndAnnounce = async (): Promise<boolean> => {
@@ -175,30 +178,14 @@ export function FileTab({
   };
   const saveBinding = useMemo<InkcapSaveBinding>(
     () => ({
-      availability: () => {
-        // A draft has no file yet, so Save asks where to put it.
-        if (localRef.current)
-          return closedRef.current
-            ? { status: "unavailable", reason: "This draft is closed." }
-            : (target?.saving ?? savingRef.current)
-              ? {
-                  status: "unavailable",
-                  reason: "A save is already running.",
-                }
-              : { status: "available" };
-        const saving = target?.saving ?? savingRef.current;
-        if (closedRef.current || !savableRef.current)
-          return {
-            status: "unavailable",
-            reason: "No focused savable document.",
-          };
-        if (saving)
-          return {
-            status: "unavailable",
-            reason: "A save is already running.",
-          };
-        return { status: "available" };
-      },
+      availability: () =>
+        saveAvailability({
+          local: localRef.current,
+          closed: closedRef.current,
+          savable: savableRef.current,
+          saving: target?.saving ?? savingRef.current,
+          dirty: dirtyRef.current,
+        }),
       save: () => saveAndAnnounce(),
       saveAsAvailability: () => {
         if (closedRef.current || !canSaveAsRef.current)
@@ -226,7 +213,19 @@ export function FileTab({
     return () => {
       onSaveBinding(tabKey, undefined);
     };
-  }, [onSaveBinding, saveBinding, tabKey]);
+    // Republish when the state behind availability changes so the command
+    // catalog and File menu re-read it after this render's refs are current.
+  }, [
+    onSaveBinding,
+    saveBinding,
+    tabKey,
+    document.dirty,
+    document.saving,
+    document.conflict,
+    document.resolving,
+    savable,
+    target?.closed,
+  ]);
   const file = useMemo(
     () => ({ name: document.currentPath, contents: document.contents }),
     [document.currentPath, document.contents],

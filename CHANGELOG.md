@@ -1,5 +1,13 @@
 # @fungi.computer/inkcap
 
+## 0.11.4
+
+### Patch Changes
+
+- Changes since 0.11.3:
+
+  - fix(inkcap): disable File > Save on a clean file until it has edits
+
 ## 0.11.3
 
 ### Patch Changes
