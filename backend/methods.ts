@@ -26,6 +26,7 @@ import {
   listOutputSchema,
   readBytesInputSchema,
   writeOutputSchema,
+  mkdirOutputSchema,
 } from "@fungi.computer/computer-contract";
 export type InkcapBackendContext = {
   activity: DocumentActivityStore;
@@ -36,6 +37,7 @@ export type InkcapBackendContext = {
       list(input: z.output<typeof listInput>): Promise<WhistleJsonValue>;
       read(input: z.output<typeof readInput>): Promise<WhistleJsonValue>;
       write(input: z.output<typeof writeInput>): Promise<WhistleJsonValue>;
+      mkdir(input: { path: string }): Promise<WhistleJsonValue>;
     };
   };
 };
@@ -111,17 +113,20 @@ const refusal = z.union([
 const listReply = z.union([listOutputSchema, refusal]);
 const readReply = z.union([readOutput, refusal]);
 const writeReply = z.union([writeOutputSchema, refusal]);
+const mkdirReply = z.union([mkdirOutputSchema, refusal]);
 // The host always supplies callable bindings; admission is checked on invocation.
 const bindingNotGranted = z.object({ code: z.literal("binding_not_granted") });
 // The Computer's file system names an absent file or parent folder ENOENT. It is
 // a domain answer, so it must reach the Agent as a refusal; thrown, the sandbox
 // reports only "failed for an unrecognized reason".
 const pathAbsent = z.object({ code: z.literal("ENOENT") });
+function parentFolder(path: string) {
+  return path.slice(0, path.lastIndexOf("/")) || "/";
+}
 function parentNotFound(path: string) {
-  const folder = path.slice(0, path.lastIndexOf("/")) || "/";
   return {
     error: "parent_not_found" as const,
-    message: `The folder ${folder} does not exist; Inkcap can't create folders yet. Save into an existing folder (for example /notes.md at the top level), or list folders with listFiles.`,
+    message: `The folder ${parentFolder(path)} does not exist and could not be created. Save into an existing folder (for example /notes.md at the top level), or list folders with listFiles.`,
   };
 }
 function fileGone(path: string) {
@@ -226,7 +231,7 @@ export const appBackend = defineAppBackend({
     }),
     writeFile: defineAppMethod({
       description:
-        "Write UTF-8 text on the attached Computer. The folder must already exist (Inkcap cannot create folders): a missing folder is refused as parent_not_found, and the path is on the Computer, not the host machine. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
+        "Write UTF-8 text on the attached Computer. A missing folder is created first; if it cannot be created the write is refused as parent_not_found, and the path is on the Computer, not the host machine. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
       effect: "write",
       requires: ["computer.writeFile"],
       input: writeInput,
@@ -263,11 +268,31 @@ export const appBackend = defineAppBackend({
           input.expectedContent === undefined
             ? parentNotFound(input.path)
             : fileGone(input.path);
-        const reply = writeReply.parse(
-          await computerCall(() => context.env.COMPUTER.write(input), absent),
+        const attempt = async () => {
+          const reply = writeReply.parse(
+            await computerCall(() => context.env.COMPUTER.write(input), absent),
+          );
+          // Hosts answer a missing path as plain not_found.
+          return "error" in reply && reply.error === "not_found"
+            ? absent
+            : reply;
+        };
+        const reply = await attempt();
+        if (
+          input.expectedContent !== undefined ||
+          !("error" in reply) ||
+          reply.error !== "parent_not_found"
+        )
+          return reply;
+        // A new file's missing folder is created, then the write is retried once.
+        const made = mkdirReply.parse(
+          await computerCall(
+            () =>
+              context.env.COMPUTER.mkdir({ path: parentFolder(input.path) }),
+            absent,
+          ),
         );
-        // Hosts answer a missing path as plain not_found.
-        return "error" in reply && reply.error === "not_found" ? absent : reply;
+        return "error" in made ? absent : await attempt();
       },
     }),
   },

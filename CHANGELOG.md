@@ -1,5 +1,22 @@
 # @fungi.computer/inkcap
 
+## 0.12.0
+
+### Minor Changes
+
+- Changes since 0.11.7:
+
+  - feat(apps): let App backends create folders on the Computer (COMPUTER.mkdir)
+  - fix(hub): keep App Computer mkdir beside move after merging integration
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.12.1
+  - @fungi.computer/nacre@0.6.0
+  - @fungi.computer/computer-contract@0.3.1
+
 ## 0.11.7
 
 ### Patch Changes
