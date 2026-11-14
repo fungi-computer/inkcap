@@ -27,6 +27,8 @@ import {
   readBytesInputSchema,
   writeOutputSchema,
   mkdirOutputSchema,
+  gitChangesInputSchema,
+  gitChangesOutputSchema,
 } from "@fungi.computer/computer-contract";
 export type InkcapBackendContext = {
   activity: DocumentActivityStore;
@@ -38,6 +40,9 @@ export type InkcapBackendContext = {
       read(input: z.output<typeof readInput>): Promise<WhistleJsonValue>;
       write(input: z.output<typeof writeInput>): Promise<WhistleJsonValue>;
       mkdir(input: { path: string }): Promise<WhistleJsonValue>;
+      gitChanges(
+        input: z.output<typeof gitChangesInput>,
+      ): Promise<WhistleJsonValue>;
     };
   };
 };
@@ -60,6 +65,9 @@ const readInput = readBytesInputSchema.extend({
     .min(1)
     .max(128 * 1024)
     .default(128 * 1024),
+});
+const gitChangesInput = gitChangesInputSchema.extend({
+  path: computerPath.default("/"),
 });
 const text = z.string().max(48 * 1024);
 const writeInput = z
@@ -114,6 +122,7 @@ const listReply = z.union([listOutputSchema, refusal]);
 const readReply = z.union([readOutput, refusal]);
 const writeReply = z.union([writeOutputSchema, refusal]);
 const mkdirReply = z.union([mkdirOutputSchema, refusal]);
+const gitChangesReply = z.union([gitChangesOutputSchema, refusal]);
 // The host always supplies callable bindings; admission is checked on invocation.
 const bindingNotGranted = z.object({ code: z.literal("binding_not_granted") });
 // The Computer's file system names an absent file or parent folder ENOENT. It is
@@ -213,6 +222,20 @@ export const appBackend = defineAppBackend({
           ? refusal.parse({ error: "not_granted" })
           : listReply.parse(
               await computerCall(() => context.env.COMPUTER.list(input)),
+            ),
+    }),
+    gitChanges: defineAppMethod({
+      description:
+        "Read everything changed in the Git repository holding one folder on the attached Computer, for review before commit or push: changed files and one unified diff against the last commit, untracked files as additions. Read-only; no Computer selector is accepted.",
+      effect: "read",
+      requires: ["computer.readFile"],
+      input: gitChangesInput,
+      output: gitChangesReply,
+      handler: async (input, context: InkcapBackendContext, caller) =>
+        caller.computerId === null
+          ? refusal.parse({ error: "not_granted" })
+          : gitChangesReply.parse(
+              await computerCall(() => context.env.COMPUTER.gitChanges(input)),
             ),
     }),
     readFile: defineAppMethod({

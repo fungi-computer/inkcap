@@ -404,3 +404,172 @@ body,
   padding-block-end: var(--spacing-sm);
   font-size: 0.75rem;
 }
+/* Changes is a section above the tree; the tree stays visible below it. */
+.inkcap-tree-files {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.inkcap-changes {
+  flex: none;
+  border-bottom: 1px solid var(--color-base-300);
+}
+.inkcap-changes-retry {
+  flex: none;
+  justify-content: flex-start;
+  margin-inline: var(--spacing-xs);
+  font-size: 0.75rem;
+}
+.inkcap-changes-list {
+  max-height: 40dvh;
+  overflow: auto;
+}
+.inkcap-changes-list > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.inkcap-changes-empty {
+  padding-block: var(--spacing-sm);
+}
+.inkcap-change-file {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--spacing-xs);
+  font-size: 0.75rem;
+  border-radius: var(--radius-field);
+}
+/* The open diff's row wears the same flat selected fill as the file tree. */
+.inkcap-change-file[aria-current="true"] {
+  background: var(--color-base-300);
+}
+.inkcap-change-path {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+.inkcap-change-counts {
+  flex: none;
+  display: inline-flex;
+  gap: var(--spacing-xs);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+.inkcap-change-mark {
+  flex: none;
+  width: 1rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+/* Status ink keeps the theme's own colours in mocha. Latte's are too faint at
+   11-12px, so they are mixed toward the text colour to reach 4.5:1 (checked by
+   the browser proof). */
+.inkcap-change-mark[data-status="added"],
+.inkcap-change-mark[data-status="untracked"],
+.inkcap-change-added {
+  color: var(--color-success);
+}
+.inkcap-change-mark[data-status="modified"],
+.inkcap-change-mark[data-status="renamed"] {
+  color: var(--color-warning);
+}
+.inkcap-change-mark[data-status="deleted"],
+.inkcap-change-mark[data-status="conflicted"],
+.inkcap-change-removed {
+  color: var(--color-error);
+}
+[data-theme="latte"]
+  :is(
+    .inkcap-change-mark[data-status="added"],
+    .inkcap-change-mark[data-status="untracked"],
+    .inkcap-change-added
+  ) {
+  color: color-mix(
+    in oklab,
+    var(--color-success) 40%,
+    var(--color-base-content)
+  );
+}
+[data-theme="latte"]
+  :is(
+    .inkcap-change-mark[data-status="modified"],
+    .inkcap-change-mark[data-status="renamed"]
+  ) {
+  color: color-mix(
+    in oklab,
+    var(--color-warning) 28%,
+    var(--color-base-content)
+  );
+}
+[data-theme="latte"]
+  :is(
+    .inkcap-change-mark[data-status="deleted"],
+    .inkcap-change-mark[data-status="conflicted"],
+    .inkcap-change-removed
+  ) {
+  color: color-mix(in oklab, var(--color-error) 45%, var(--color-base-content));
+}
+/* A changed file's diff fills the editor area; only the code scrolls. */
+.inkcap-diff-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-base-100);
+}
+.inkcap-diff-tab[hidden] {
+  display: none;
+}
+.inkcap-diff-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-base-100);
+  border-bottom: 1px solid var(--color-base-300);
+  font-size: 0.75rem;
+}
+.inkcap-diff-path {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.inkcap-diff-dir {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--stipe-fg-muted);
+}
+.inkcap-diff-name {
+  flex: none;
+}
+.inkcap-diff-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-size: 0.8125rem;
+}
+.inkcap-diff-header .caps-button > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+/* The phone strip is about 115px wide and snaps to tab edges, so a diff tab
+   keeps its name short enough for the tab and its 44px close button to fit
+   whole; the title and label carry the full path. */
+.inkcap-tab-diff > span {
+  max-width: 2.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

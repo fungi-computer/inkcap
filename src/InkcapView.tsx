@@ -2,7 +2,7 @@ import type { TargetCheck } from "./path-exists.js";
 import { useQuery } from "@tanstack/react-query";
 import { describeAppError } from "@fungi.computer/agar/errors";
 import { FailureLine } from "@fungi.computer/caps/components/failure-line";
-import { directoryQuery } from "./tree-queries.js";
+import { directoryQuery } from "@fungi.computer/agar/computer-tree";
 import { computerWriteFile } from "@fungi.computer/agar/computer";
 import {
   Fragment,
@@ -16,6 +16,7 @@ import {
 import {
   ChevronsUpDown,
   FileCode2,
+  FileDiff,
   FilePlus2,
   FolderOpen,
   PanelLeft,
@@ -29,6 +30,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@fungi.computer/caps/components/tabs";
+import { DiffTab, diffTabValue } from "./DiffTab.js";
 import { Keycap } from "@fungi.computer/caps/components/keycap";
 import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import { Alert } from "@fungi.computer/caps/components/alert";
@@ -151,6 +153,26 @@ export function InkcapView({
     };
   }, []);
   const [treeLoadRequested, setTreeLoadRequested] = useState(false);
+  // Changed files open as diff tabs beside the file tabs; one is shown at a time.
+  const [diffs, setDiffs] = useState<string[]>([]);
+  const [activeDiff, setActiveDiff] = useState<string | null>(null);
+  const diffScope = `${model.selectedConnection?.app.identity.surfaceId ?? ""}:${model.context.computerId ?? ""}:${model.context.projectPath}`;
+  useEffect(() => {
+    setDiffs([]);
+    setActiveDiff(null);
+  }, [diffScope]);
+  const diffApp = model.selectedConnection?.app ?? null;
+  const openDiff = (path: string): void => {
+    setDiffs((current) =>
+      current.includes(path) ? current : [...current, path],
+    );
+    setActiveDiff(path);
+    setFilesOpen(false);
+  };
+  const closeDiff = (path: string): void => {
+    setDiffs((current) => current.filter((candidate) => candidate !== path));
+    setActiveDiff((current) => (current === path ? null : current));
+  };
   const [selectedTreePath, setSelectedTreePath] = useState<string | null>(null);
   const canBrowseFiles =
     model.canList &&
@@ -323,7 +345,7 @@ export function InkcapView({
       strip.removeEventListener("scroll", mark);
       observer?.disconnect();
     };
-  }, [model.active, model.tabs.length, narrow]);
+  }, [model.active, model.tabs.length, narrow, activeDiff, diffs.length]);
   useEffect(() => {
     setSelectedTreePath(null);
   }, [
@@ -356,9 +378,12 @@ export function InkcapView({
       active={active}
       computer={computer}
       onOpenFile={(path) => {
+        setActiveDiff(null);
         model.onOpenFile(path);
         setFilesOpen(false);
       }}
+      onOpenDiff={openDiff}
+      activeDiff={activeDiff}
       onSelectPath={setSelectedTreePath}
       creationRequest={creationRequest}
       onCreationRequestHandled={() => {
@@ -409,8 +434,22 @@ export function InkcapView({
         )}
         <Tabs
           className="inkcap-editors"
-          value={model.active === null ? "" : String(model.active)}
+          value={
+            activeDiff !== null
+              ? diffTabValue(activeDiff)
+              : model.active === null
+                ? ""
+                : String(model.active)
+          }
           onValueChange={(value) => {
+            const diff = diffs.find(
+              (candidate) => diffTabValue(candidate) === value,
+            );
+            if (diff !== undefined) {
+              setActiveDiff(diff);
+              return;
+            }
+            setActiveDiff(null);
             const tab = model.tabs.find(
               (candidate) => String(candidate.tabKey) === value,
             );
@@ -499,6 +538,33 @@ export function InkcapView({
                   />
                 </Fragment>
               ))}
+              {diffs.map((path) => (
+                <Fragment key={path}>
+                  <TabsTrigger
+                    className={
+                      narrow ? "inkcap-tab inkcap-tab-diff" : "inkcap-tab"
+                    }
+                    value={diffTabValue(path)}
+                    title={`Changes to ${path}`}
+                    aria-label={`Changes to ${path}`}
+                  >
+                    <FileDiff aria-hidden="true" />
+                    <span>
+                      {path.split("/").at(-1)}
+                      {narrow ? "" : " (changes)"}
+                    </span>
+                  </TabsTrigger>
+                  <IconButton
+                    size="responsive"
+                    variant="ghost"
+                    icon={<X />}
+                    aria-label={`Close changes to ${path}`}
+                    onClick={() => {
+                      closeDiff(path);
+                    }}
+                  />
+                </Fragment>
+              ))}
             </TabsList>
             <div className="inkcap-tab-actions">
               {tabsOverflow ? (
@@ -509,12 +575,12 @@ export function InkcapView({
                         size="sm"
                         variant="ghost"
                         className="inkcap-tab-list"
-                        aria-label={`Open files, ${String(model.tabs.length)}`}
+                        aria-label={`Open files, ${String(model.tabs.length + diffs.length)}`}
                         title="Open files"
                       >
                         <ChevronsUpDown aria-hidden="true" />
                         <span className="tabular-nums">
-                          {model.tabs.length}
+                          {model.tabs.length + diffs.length}
                         </span>
                       </Button>
                     }
@@ -523,12 +589,26 @@ export function InkcapView({
                     {model.tabs.map((tab) => (
                       <DropdownMenuCheckboxItem
                         key={tab.tabKey}
-                        checked={tab.tabKey === model.active}
+                        checked={
+                          activeDiff === null && tab.tabKey === model.active
+                        }
                         onSelect={() => {
+                          setActiveDiff(null);
                           model.onActivate(tab.tabKey);
                         }}
                       >
                         {tab.path.split("/").at(-1)}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                    {diffs.map((path) => (
+                      <DropdownMenuCheckboxItem
+                        key={`diff:${path}`}
+                        checked={activeDiff === path}
+                        onSelect={() => {
+                          setActiveDiff(path);
+                        }}
+                      >
+                        {path.split("/").at(-1)} (changes)
                       </DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
@@ -544,6 +624,21 @@ export function InkcapView({
               <span className="inkcap-menu-slot" ref={setMenuSlot} />
             </div>
           </div>
+          {diffApp
+            ? diffs.map((path) => (
+                <DiffTab
+                  key={path}
+                  app={diffApp}
+                  rootPath={model.context.projectPath}
+                  path={path}
+                  narrow={narrow}
+                  onOpenFile={(file) => {
+                    setActiveDiff(null);
+                    model.onOpenFile(file);
+                  }}
+                />
+              ))
+            : null}
           {model.tabs.map((tab) => (
             <Suspense
               key={tab.tabKey}
@@ -625,6 +720,7 @@ export function InkcapView({
             </Suspense>
           ))}
           {model.tabs.length === 0 &&
+          diffs.length === 0 &&
           listing.isError &&
           (!explorer || (narrow && !filesOpen)) ? (
             <FailureLine
@@ -633,7 +729,7 @@ export function InkcapView({
                 void listing.refetch();
               }}
             />
-          ) : model.tabs.length === 0 ? (
+          ) : model.tabs.length === 0 && diffs.length === 0 ? (
             <EmptyState
               className="inkcap-empty"
               variant="quiet"
@@ -810,6 +906,8 @@ function FileTreePane({
   active,
   computer,
   onOpenFile,
+  onOpenDiff,
+  activeDiff,
   onSelectPath,
   creationRequest,
   onCreationRequestHandled,
@@ -821,6 +919,8 @@ function FileTreePane({
   active: Tab | undefined;
   computer: string;
   onOpenFile: (path: string) => void;
+  onOpenDiff: (path: string) => void;
+  activeDiff: string | null;
   onSelectPath: (path: string) => void;
   creationRequest: {
     kind: "file" | "folder";
@@ -903,6 +1003,8 @@ function FileTreePane({
             : null
         }
         onOpenFile={onOpenFile}
+        onOpenDiff={onOpenDiff}
+        activeDiff={activeDiff}
         onSelectPath={onSelectPath}
         creationRequest={creationRequest}
         onCreationRequestHandled={onCreationRequestHandled}

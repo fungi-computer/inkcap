@@ -1,76 +1,18 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFileTree } from "@pierre/trees/react";
-import { FileTree, type FileTreeBatchOperation } from "@pierre/trees";
 import type { AppRoot } from "@fungi.computer/agar";
-import { useComputerId } from "@fungi.computer/agar/react";
-import { directoryQuery, isHiddenEntry } from "./tree-queries.js";
-import { queryKeys } from "@fungi.computer/agar/query";
+import {
+  createComputerTreeSyncState,
+  isHiddenEntry,
+  resetComputerTree,
+  revealParents,
+  syncComputerTree,
+  useComputerTreePages,
+} from "@fungi.computer/agar/computer-tree";
 import { describeAppError } from "@fungi.computer/agar/errors";
 import * as Redacted from "effect/Redacted";
-import { type ComputerListing } from "@fungi.computer/agar/computer";
 
 export const TREE_ROW_HEIGHT_PX = 32;
-
-function entryPath(directory: string, name: string, type: string): string {
-  const prefix = directory.endsWith("/") ? directory : `${directory}/`;
-  return `${prefix}${name}${type === "directory" ? "/" : ""}`;
-}
-
-/** Merge one server listing into the native model without repeating paths. */
-export function mergeListing(
-  model: Pick<FileTree, "batch" | "getItem">,
-  result: ComputerListing,
-  knownPaths: Set<string>,
-): readonly string[] {
-  const paths = result.entries
-    .filter((entry) => entry.type !== "symlink")
-    .map((entry) => entryPath(result.path, entry.name, entry.type));
-  // The model also holds rows added outside a listing (a just-created file);
-  // adding one again throws, so the model itself is the final word.
-  const additions = paths.filter(
-    (path) => !knownPaths.has(path) && !model.getItem(path),
-  );
-  if (additions.length > 0) {
-    const operations: FileTreeBatchOperation[] = additions.map((path) => ({
-      type: "add",
-      path,
-    }));
-    model.batch(operations);
-  }
-  knownPaths.add(result.path);
-  for (const path of paths) knownPaths.add(path);
-  return additions;
-}
-
-export function revealParents(
-  path: string,
-  rootPath: string,
-): readonly string[] {
-  const root = rootPath === "/" ? "/" : rootPath.replace(/\/+$/, "");
-  if (root !== "/" && path !== root && !path.startsWith(`${root}/`)) return [];
-  const relative =
-    root === "/"
-      ? path.split("/").filter(Boolean)
-      : path.slice(root.length).split("/").filter(Boolean);
-  const parents = [root];
-  let parent = root;
-  for (const segment of relative.slice(0, -1)) {
-    parent = `${parent === "/" ? "" : parent}/${segment}`;
-    parents.push(parent);
-  }
-  return parents;
-}
-
-type PageRequest = Readonly<{ path: string; offset: number }>;
 
 export function useInkcapTreeModel({
   app,
@@ -90,70 +32,10 @@ export function useInkcapTreeModel({
   onOpenFile: (path: string) => void;
   onSelectPath?: (path: string) => void;
 }) {
-  const client = useQueryClient();
-  const computerId = useComputerId(app);
-  const subscribe = useCallback(
-    (listener: () => void) => app.capabilities.subscribe(listener),
-    [app],
-  );
-  const getVersion = useCallback(() => app.capabilities.version, [app]);
-  const version = useSyncExternalStore(subscribe, getVersion, getVersion);
-  const scope = useMemo(
-    () => ({ app, rootPath, computerId, version }),
-    [app, rootPath, computerId, version],
-  );
-  const [selection, setSelection] = useState<{
-    scope: typeof scope;
-    activePath: string | null;
-    path: string;
-    pages: readonly PageRequest[];
-  } | null>(null);
-  const current = selection?.scope === scope ? selection : null;
-  const parents = activePath ? revealParents(activePath, rootPath) : [];
-  const focusedPath =
-    current?.activePath === activePath
-      ? current.path
-      : (parents.at(-1) ?? rootPath);
-  const requests = new Map<string, PageRequest>();
-  for (const path of [rootPath, ...parents])
-    requests.set(`${path}:0`, { path, offset: 0 });
-  for (const request of current?.pages ?? [])
-    requests.set(`${request.path}:${String(request.offset)}`, request);
-  const pages = [...requests.values()];
-  const key = (path: string, offset: number) =>
-    queryKeys.of(app, "tree", version, path, offset);
-  const snapshot = useQueries({
-    queries: pages.map(({ path, offset }) => directoryQuery(app, path, offset)),
-    combine: (results) => ({
-      listings: results.flatMap((result, index) =>
-        result.data ? [{ request: pages[index], listing: result.data }] : [],
-      ),
-      busy: results.some((result) => result.isFetching),
-      failure: results.find((result) => result.error)?.error ?? null,
-    }),
-  });
+  const { scope, snapshot, focusedPath, requestPage, reload } =
+    useComputerTreePages({ app, rootPath, activePath });
   const callbacks = useRef({ activePath, onOpenFile, onSelectPath, rootLabel });
   callbacks.current = { activePath, onOpenFile, onSelectPath, rootLabel };
-  const requestPage = (path: string, offset: number) => {
-    const directory = path.replace(/\/+$/, "") || "/";
-    const pageKey = key(directory, offset);
-    if (client.getQueryState(pageKey)?.status === "error") {
-      void client.invalidateQueries({ queryKey: pageKey, exact: true });
-    }
-    setSelection((previous) => ({
-      scope,
-      activePath,
-      path: directory,
-      pages: [
-        ...(previous?.scope === scope
-          ? previous.pages.filter(
-              (page) => page.path !== directory || page.offset !== offset,
-            )
-          : []),
-        { path: directory, offset },
-      ],
-    }));
-  };
   // Pierre owns a long-lived model; its event handler delegates to the current scope.
   const loadDirectory = useRef(requestPage);
   loadDirectory.current = requestPage;
@@ -180,13 +62,10 @@ export function useInkcapTreeModel({
         callbacks.current.onOpenFile(path);
     },
   });
-  const knownPaths = useRef(new Set<string>());
-  const projectedPages = useRef(new Map<string, readonly string[]>());
+  const treeState = useRef(createComputerTreeSyncState());
   const revealed = useRef<string | null>(null);
   useLayoutEffect(() => {
-    knownPaths.current.clear();
-    projectedPages.current.clear();
-    model.resetPaths([]);
+    resetComputerTree(model, treeState.current);
     revealed.current = null;
   }, [model, scope]);
   useLayoutEffect(() => {
@@ -197,33 +76,12 @@ export function useInkcapTreeModel({
     }
   }, [activePath, model]);
   useLayoutEffect(() => {
-    if (snapshot.listings.length === 0) {
-      knownPaths.current.clear();
-      projectedPages.current.clear();
-      model.resetPaths([]);
-      revealed.current = null;
-    }
-    for (const { request, listing } of snapshot.listings) {
-      const pageKey = `${request.path}:${String(request.offset)}`;
-      const paths = listing.entries
-        .filter((entry) => entry.type !== "symlink")
-        .map((entry) => entryPath(listing.path, entry.name, entry.type));
-      const previous = projectedPages.current.get(pageKey) ?? [];
-      projectedPages.current.set(pageKey, paths);
-      const retained = new Set([...projectedPages.current.values()].flat());
-      for (const path of previous) {
-        if (retained.has(path)) continue;
-        if (model.getItem(path)) model.remove(path, { recursive: true });
-        for (const known of knownPaths.current) {
-          if (known === path || (path.endsWith("/") && known.startsWith(path)))
-            knownPaths.current.delete(known);
-        }
-      }
-      mergeListing(model, listing, knownPaths.current);
-    }
+    if (snapshot.listings.length === 0) revealed.current = null;
+    syncComputerTree(model, snapshot.listings, treeState.current);
     if (!activePath || revealed.current === activePath) return;
     const ancestors = revealParents(activePath, rootPath);
-    if (!ancestors.every((parent) => knownPaths.current.has(parent))) return;
+    if (!ancestors.every((parent) => treeState.current.known.has(parent)))
+      return;
     for (const parent of ancestors) {
       const directory = model.getItem(parent);
       if (directory && "expand" in directory) directory.expand();
@@ -258,11 +116,7 @@ export function useInkcapTreeModel({
       listing.entries.length === 0 &&
       listing.nextOffset === null,
   );
-  const reloadRoot = () => {
-    void client.invalidateQueries({
-      queryKey: queryKeys.of(app, "tree", version),
-    });
-  };
+  const reloadRoot = reload;
   /**
    * Show an entry this window just created, by the same rule the listing
    * applies, then re-read the listing so the root's empty note and every

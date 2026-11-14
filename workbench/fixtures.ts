@@ -31,7 +31,10 @@ export type InkcapScenario =
   | "tree-error"
   | "read-error"
   | "readonly"
-  | "activity-error";
+  | "activity-error"
+  | "changes"
+  | "changes-error"
+  | "changes-empty";
 export const projectPath = "/field-notes";
 /** A new Computer's workspace: a shell history and folders other Apps made, nothing the person wrote. */
 const firstRunFiles = {
@@ -89,6 +92,22 @@ A small place for ideas to grow.
     '{\n  "name": "field-notes",\n  "private": true\n}\n',
 };
 
+/** `git diff HEAD` and untracked additions from a real fixture repository: one modified, one deleted and one new file. */
+const changesPatch =
+  'diff --git a/src/garden.ts b/src/garden.ts\nindex 33e0ee5..f3c215d 100644\n--- a/src/garden.ts\n+++ b/src/garden.ts\n@@ -6,8 +6,9 @@ export type Plant = {\n export const garden: Plant[] = [\n   { name: "Fern", light: "morning" },\n   { name: "Clover", light: "afternoon" },\n+  { name: "Moss", light: "morning" },\n ];\n \n export function welcome(plant: Plant): string {\n-  return `A little room for ${plant.name.toLowerCase()}.`;\n+  return `A small room for ${plant.name.toLowerCase()}.`;\n }\ndiff --git a/src/theme.css b/src/theme.css\ndeleted file mode 100644\nindex 1ba2d6e..0000000\n--- a/src/theme.css\n+++ /dev/null\n@@ -1,10 +0,0 @@\n-:root {\n-  --leaf: #7ba96c;\n-  --paper: #f6f1e7;\n-}\n-\n-.garden {\n-  display: grid;\n-  gap: 1rem;\n-  background: var(--paper);\n-}\ndiff --git a/src/notes.md b/src/notes.md\nnew file mode 100644\nindex 0000000..91db408\n--- /dev/null\n+++ b/src/notes.md\n@@ -0,0 +1,3 @@\n+# Notes\n+\n+Watering schedule for the new moss.\n';
+const changesReply = {
+  kind: "changes" as const,
+  root: projectPath,
+  branch: "main",
+  files: [
+    { path: "src/garden.ts", status: "modified" as const },
+    { path: "src/theme.css", status: "deleted" as const },
+    { path: "src/notes.md", status: "untracked" as const },
+  ],
+  patch: changesPatch,
+  truncated: false,
+};
+
 /** Native Agar capability implementations; all file bytes stay in this story. */
 export function createInkcapFixture(
   scenario: InkcapScenario,
@@ -110,6 +129,22 @@ export function createInkcapFixture(
         ? Object.entries(firstRunFiles)
         : Object.entries(samples),
   );
+  if (scenario === "changes" || scenario === "changes-error") {
+    files.set(
+      `${projectPath}/src/garden.ts`,
+      (files.get(`${projectPath}/src/garden.ts`) ?? "")
+        .replace(
+          '  { name: "Clover", light: "afternoon" },\n',
+          '  { name: "Clover", light: "afternoon" },\n  { name: "Moss", light: "morning" },\n',
+        )
+        .replace("A little room for", "A small room for"),
+    );
+    files.delete(`${projectPath}/src/theme.css`);
+    files.set(
+      `${projectPath}/src/notes.md`,
+      "# Notes\n\nWatering schedule for the new moss.\n",
+    );
+  }
   if (scenario === "images") {
     files.set(
       `${projectPath}/sample.svg`,
@@ -149,6 +184,21 @@ export function createInkcapFixture(
   };
   register(appMethods, {
     call(method) {
+      if (method === "gitChanges")
+        return scenario === "changes"
+          ? Promise.resolve(changesReply)
+          : scenario === "changes-empty"
+            ? Promise.resolve({
+                kind: "changes",
+                root: projectPath,
+                branch: "main",
+                files: [],
+                patch: "",
+                truncated: false,
+              })
+            : scenario === "changes-error"
+              ? Promise.resolve({ error: "unavailable" })
+              : Promise.resolve({ kind: "not_repository" });
       if (method !== "documents.opened" && method !== "documents.edited")
         return Promise.reject(new Error("Unused fixture method"));
       return scenario === "activity-error"

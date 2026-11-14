@@ -178,6 +178,10 @@ export const NoComputerSelected = () => (
   <Workbench scenario="no-computer-selected" />
 );
 export const Narrow = () => <Workbench narrow />;
+export const Changes = () => <Workbench scenario="changes" />;
+export const ChangesNarrow = () => <Workbench scenario="changes" narrow />;
+export const ChangesEmpty = () => <Workbench scenario="changes-empty" />;
+export const ChangesUnavailable = () => <Workbench scenario="changes-error" />;
 
 export const FilesLoading = () => <Workbench scenario="tree-loading" />;
 export const FilesUnavailable = () => <Workbench scenario="tree-error" />;

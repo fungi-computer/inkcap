@@ -2,8 +2,12 @@ import { FailureLine } from "@fungi.computer/caps/components/failure-line";
 import { describeAppError } from "@fungi.computer/agar/errors";
 import { useEffect, useState, type CSSProperties } from "react";
 import { FileTree } from "@pierre/trees/react";
+import { useQuery } from "@tanstack/react-query";
+import { appMethods } from "@fungi.computer/agar/backend";
 import type { AppRoot } from "@fungi.computer/agar";
 import { Button } from "@fungi.computer/caps/components/button";
+import { CountBadge } from "@fungi.computer/caps/components/count-badge";
+import { Disclosure } from "@fungi.computer/caps/components/disclosure";
 import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import {
   computerWriteFile,
@@ -17,12 +21,16 @@ import {
 } from "./useInkcapTreeModel.js";
 import { directoryWithin, resolveComputerPath } from "./tree-path.js";
 import { CreateEntryDialog, type EntryLocation } from "./CreateEntryDialog.js";
+import { ChangesPanel } from "./ChangesPanel.js";
+import { changesQuery } from "./changes-query.js";
 
 const nameTaken = "That name already exists in this directory.";
 
 export function InkcapFileTree({
   app,
   onOpenFile,
+  onOpenDiff,
+  activeDiff = null,
   activePath,
   rootPath = "/",
   rootLabel = "Computer",
@@ -38,6 +46,10 @@ export function InkcapFileTree({
   /** The Computer or workspace's real name, shown on the Explorer root row. */
   rootLabel?: string;
   onOpenFile: (path: string) => void;
+  /** Open one changed file's diff in the editor area. */
+  onOpenDiff?: (path: string) => void;
+  /** The changed file whose diff tab is showing. */
+  activeDiff?: string | null;
   onSelectPath?: (path: string) => void;
   /** Open the create dialog from outside the tree, such as the empty editor. */
   creationRequest?: {
@@ -63,6 +75,26 @@ export function InkcapFileTree({
   });
   const [creation, setCreation] = useState<EntryLocation | null>(null);
   const canWrite = app.capabilities.has(computerWriteFile);
+  const [reviewing, setReviewing] = useState(false);
+  const canReadChanges = app.capabilities.has(appMethods);
+  const changes = useQuery(changesQuery(canReadChanges ? app : null, rootPath));
+  const repository = changes.data?.kind === "changes" ? changes.data : null;
+  function refresh(): void {
+    tree.reloadRoot();
+    if (canReadChanges) void changes.refetch();
+  }
+  // A failed read says so once as a toast; the section keeps its Retry.
+  useEffect(() => {
+    if (!changes.isError) return;
+    void app.ui
+      .showToast({
+        message: describeAppError(changes.error).message,
+        tone: "error",
+      })
+      .catch((cause: unknown) => {
+        console.error("Inkcap changes toast failed", cause);
+      });
+  }, [app, changes.isError, changes.error]);
 
   function startCreation(kind: "file" | "folder", path: string): void {
     setCreation({ kind, directory: directoryWithin(path, rootPath) });
@@ -189,55 +221,92 @@ export function InkcapFileTree({
             title="Refresh files"
             variant="ghost"
             size="responsive"
-            disabled={tree.busy}
-            onClick={tree.reloadRoot}
+            disabled={tree.busy || changes.isFetching}
+            onClick={refresh}
           />
         </span>
       </div>
+      {repository !== null ? (
+        <Disclosure
+          className="inkcap-changes"
+          size="row"
+          open={reviewing}
+          onOpenChange={setReviewing}
+          summary="Changes"
+          trailing={<CountBadge count={repository.files.length} />}
+        >
+          <ChangesPanel
+            files={repository.files}
+            patch={repository.patch}
+            truncated={repository.truncated}
+            activeDiff={activeDiff}
+            rowHeight={rowHeight}
+            onOpenDiff={(path) => {
+              onOpenDiff?.(path);
+            }}
+          />
+        </Disclosure>
+      ) : changes.isError ? (
+        <Button
+          className="inkcap-changes-retry"
+          size="sm"
+          variant="ghost"
+          onClick={() => void changes.refetch()}
+        >
+          Changes unavailable. Retry
+        </Button>
+      ) : null}
       {tree.error && (
         <FailureLine message={tree.error} onRetry={tree.reloadRoot} />
       )}
       {tree.rootEmpty ? <p className="inkcap-tree-note">Empty folder</p> : null}
-      <FileTree
-        model={tree.model}
-        style={style}
-        renderContextMenu={(item, context) => (
-          <div className="flex min-w-36 flex-col gap-xs p-xs" role="menu">
-            <Button
-              className="w-full justify-start"
-              disabled={!canWrite}
-              role="menuitem"
-              title={
-                canWrite ? undefined : "Computer write access is not granted."
-              }
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                context.close({ restoreFocus: false });
-                startCreation("file", item.path);
-              }}
-            >
-              <FilePlus2 aria-hidden="true" /> New file
-            </Button>
-            <Button
-              className="w-full justify-start"
-              disabled={!canWrite}
-              role="menuitem"
-              title={
-                canWrite ? undefined : "Computer write access is not granted."
-              }
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                context.close({ restoreFocus: false });
-                startCreation("folder", item.path);
-              }}
-            >
-              <FolderPlus aria-hidden="true" /> New folder
-            </Button>
-          </div>
+      <div className="inkcap-tree-files">
+        <FileTree
+          model={tree.model}
+          style={style}
+          renderContextMenu={(item, context) => (
+            <div className="flex min-w-36 flex-col gap-xs p-xs" role="menu">
+              <Button
+                className="w-full justify-start"
+                disabled={!canWrite}
+                role="menuitem"
+                title={
+                  canWrite ? undefined : "Computer write access is not granted."
+                }
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  context.close({ restoreFocus: false });
+                  startCreation("file", item.path);
+                }}
+              >
+                <FilePlus2 aria-hidden="true" /> New file
+              </Button>
+              <Button
+                className="w-full justify-start"
+                disabled={!canWrite}
+                role="menuitem"
+                title={
+                  canWrite ? undefined : "Computer write access is not granted."
+                }
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  context.close({ restoreFocus: false });
+                  startCreation("folder", item.path);
+                }}
+              >
+                <FolderPlus aria-hidden="true" /> New folder
+              </Button>
+            </div>
+          )}
+        />
+        {tree.page.next !== null && (
+          <Button disabled={tree.busy} onClick={tree.loadNext}>
+            More in {tree.page.path}
+          </Button>
         )}
-      />
+      </div>
       <CreateEntryDialog
         creation={creation}
         rootPath={rootPath}
@@ -246,11 +315,6 @@ export function InkcapFileTree({
           setCreation(null);
         }}
       />
-      {tree.page.next !== null && (
-        <Button disabled={tree.busy} onClick={tree.loadNext}>
-          More in {tree.page.path}
-        </Button>
-      )}
     </aside>
   );
 }

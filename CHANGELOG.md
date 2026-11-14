@@ -1,5 +1,28 @@
 # @fungi.computer/inkcap
 
+## 0.13.0
+
+### Minor Changes
+
+- Changes since 0.12.0:
+
+  - fix(inkcap): keep the phone diff tab and its close button whole
+  - fix(inkcap): polish the Changes view after visual review
+  - feat(inkcap): review everything the Agent changed in one Changes view
+  - feat(prints): add the Library UI
+  - feat(prints): add the Library backend and share the Computer tree model
+  - feat(prints): add the Library backend and share the Computer tree model
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.13.0
+  - @fungi.computer/caps@0.11.4
+  - @fungi.computer/computer-contract@0.4.0
+  - @fungi.computer/nacre@0.6.1
+
 ## 0.12.0
 
 ### Minor Changes
