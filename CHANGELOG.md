@@ -1,5 +1,20 @@
 # @fungi.computer/inkcap
 
+## 0.14.0
+
+### Minor Changes
+
+- Changes since 0.13.3:
+
+  - feat(inkcap): show the open tab whole on a phone
+  - fix(inkcap): read the File menu's Save state from the Save command's
+    availability
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/caps@0.11.6
+
 ## 0.13.3
 
 ### Patch Changes

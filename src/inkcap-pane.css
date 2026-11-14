@@ -565,11 +565,24 @@ body,
   width: 0.875rem;
   height: 0.875rem;
 }
-/* The phone strip is about 115px wide and snaps to tab edges, so a diff tab
-   keeps its name short enough for the tab and its 44px close button to fit
-   whole; the title and label carry the full path. */
-.inkcap-tab-diff > span {
-  max-width: 2.25rem;
+/* On a phone the strip shows only the open tab, whole, with its close button:
+   it takes every pixel the other controls leave, so the name reads in full.
+   The other tabs are one tap away in the switcher beside it. */
+.inkcap-app[data-narrow] .inkcap-tabs {
   overflow: hidden;
-  text-overflow: ellipsis;
+  mask-image: none;
+}
+.inkcap-app[data-narrow] .inkcap-tabs [role="tab"][aria-selected="false"],
+.inkcap-app[data-narrow] .inkcap-tabs [role="tab"][aria-selected="false"] + * {
+  display: none;
+}
+.inkcap-app[data-narrow] .inkcap-tabs [role="tab"][aria-selected="true"] {
+  flex: 1 1 0;
+  max-width: none;
+  padding-inline: var(--spacing-xs);
+}
+/* The file icon is spent on the name; the diff tab keeps its icon, since that
+   is what tells it from the file's own tab. */
+.inkcap-app[data-narrow] .inkcap-tab-file > svg {
+  display: none;
 }

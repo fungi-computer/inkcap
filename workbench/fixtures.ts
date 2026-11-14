@@ -171,6 +171,10 @@ export function createInkcapFixture(
   }
   const handlers = new Map<string, AppCommandHandler>();
   const definitions = new Map<string, AppCommand>();
+  const menuListeners = new Set<() => void>();
+  const announceMenu = () => {
+    for (const listener of menuListeners) listener();
+  };
   const capabilities = createCapabilityRegistry();
   let beforeClose: (() => boolean | Promise<boolean>) | undefined;
   let denyWrites = scenario === "failed-save";
@@ -352,10 +356,18 @@ export function createInkcapFixture(
       register: async (command, handler) => {
         handlers.set(command.id, handler);
         definitions.set(command.id, command);
+        // What the host's key layer would act on, for proofs that must not
+        // race the catalog's republish.
+        if (command.id === "save")
+          globalThis.document.body.dataset.saveCommand =
+            command.availability?.status ?? "available";
+        announceMenu();
         const release = await commandSink?.register(command, handler);
         return () => {
           handlers.delete(command.id);
-          definitions.delete(command.id);
+          if (definitions.get(command.id) === command)
+            definitions.delete(command.id);
+          announceMenu();
           release?.();
         };
       },
@@ -434,6 +446,38 @@ export function createInkcapFixture(
       return () => {
         root.removeEventListener("keydown", onKeyDown, { capture: true });
       };
+    },
+    /**
+     * Stand in for the host's File menu: the registered commands that project
+     * a menu item, in order, with the availability each one reports.
+     */
+    fileMenu() {
+      return [...definitions.values()]
+        .filter((command) => command.projections?.menu !== undefined)
+        .sort(
+          (a, b) =>
+            (a.projections?.menu?.order ?? 0) -
+            (b.projections?.menu?.order ?? 0),
+        )
+        .map((command) => ({
+          id: command.id,
+          title: command.title,
+          enabled: command.availability?.status !== "unavailable",
+        }));
+    },
+    onFileMenuChange(listener: () => void): () => void {
+      menuListeners.add(listener);
+      return () => {
+        menuListeners.delete(listener);
+      };
+    },
+    async runMenuItem(id: string) {
+      const command = definitions.get(id);
+      if (command?.availability?.status === "unavailable") return;
+      await handlers.get(id)?.({
+        origin: "menu",
+        signal: new AbortController().signal,
+      });
     },
     async open(path: string) {
       const handler = handlers.get("open-file");

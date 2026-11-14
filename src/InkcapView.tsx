@@ -277,11 +277,13 @@ export function InkcapView({
     },
   ]);
   const active = model.tabs.find((tab) => tab.tabKey === model.active);
-  // A narrow strip scrolls. Keep the open file's tab, with its close button,
-  // fully inside the strip by the shortest scroll, so the neighbouring tab
-  // stays partly visible under the edge fade instead of hiding off-screen.
-  // Mark which sides hide tabs so CSS fades only those. Tab widths settle after
-  // first paint (fonts, names), so a resize of the strip or any tab repeats it.
+  // A strip with more tabs than room scrolls. Keep the open file's tab, with
+  // its close button, fully inside the strip by the shortest scroll that rests
+  // on a whole tab's edge; a neighbour that does not fit hides whole, and the
+  // edge fade says the strip scrolls. Mark which sides hide tabs so CSS fades
+  // only those. A phone shows the open tab alone (CSS), so nothing scrolls
+  // there. Tab widths settle after first paint (fonts, names), so a resize of
+  // the strip or any tab repeats it.
   useEffect(() => {
     const strip = root.current?.querySelector<HTMLElement>(".inkcap-tabs");
     if (!strip) return;
@@ -466,7 +468,8 @@ export function InkcapView({
                       variant="ghost"
                       className="inkcap-files-button"
                     >
-                      <PanelLeft aria-hidden="true" /> Files
+                      <PanelLeft aria-hidden="true" />
+                      <span className="sr-only">Files</span>
                     </Button>
                   }
                 />
@@ -510,7 +513,7 @@ export function InkcapView({
               {model.tabs.map((tab) => (
                 <Fragment key={tab.tabKey}>
                   <TabsTrigger
-                    className="inkcap-tab"
+                    className="inkcap-tab inkcap-tab-file"
                     value={String(tab.tabKey)}
                     title={
                       tab.connection?.source
@@ -541,9 +544,7 @@ export function InkcapView({
               {diffs.map((path) => (
                 <Fragment key={path}>
                   <TabsTrigger
-                    className={
-                      narrow ? "inkcap-tab inkcap-tab-diff" : "inkcap-tab"
-                    }
+                    className="inkcap-tab"
                     value={diffTabValue(path)}
                     title={`Changes to ${path}`}
                     aria-label={`Changes to ${path}`}
@@ -567,7 +568,8 @@ export function InkcapView({
               ))}
             </TabsList>
             <div className="inkcap-tab-actions">
-              {tabsOverflow ? (
+              {tabsOverflow ||
+              (narrow && model.tabs.length + diffs.length > 1) ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -589,6 +591,7 @@ export function InkcapView({
                     {model.tabs.map((tab) => (
                       <DropdownMenuCheckboxItem
                         key={tab.tabKey}
+                        closeOnClick
                         checked={
                           activeDiff === null && tab.tabKey === model.active
                         }
@@ -603,6 +606,7 @@ export function InkcapView({
                     {diffs.map((path) => (
                       <DropdownMenuCheckboxItem
                         key={`diff:${path}`}
+                        closeOnClick
                         checked={activeDiff === path}
                         onSelect={() => {
                           setActiveDiff(path);

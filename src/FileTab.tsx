@@ -33,7 +33,7 @@ import { getTheme, subscribeTheme } from "@fungi.computer/stipe/theme";
 import { useForm, useSelector } from "@tanstack/react-form";
 import { FileConflict } from "./FileConflict.js";
 import { useFileDocument, type DocumentTarget } from "./useFileDocument.js";
-import type { InkcapSaveBinding } from "./commands.js";
+import type { InkcapSaveAvailability, InkcapSaveBinding } from "./commands.js";
 import { draftSavePath } from "./tree-path.js";
 import { imageMediaType, isMarkdownPath } from "./read-for-open.js";
 
@@ -253,6 +253,7 @@ export function FileTab({
       menuSlot={active ? menuSlot : null}
       tabKey={tabKey}
       savable={savable}
+      saveAvailability={saveBinding.availability()}
       narrow={narrow}
       local={local}
       sourceLabel={sourceLabel}
@@ -288,6 +289,7 @@ function FileTabLayout({
   menuSlot,
   tabKey,
   savable,
+  saveAvailability,
   narrow,
   local,
   sourceLabel,
@@ -317,6 +319,7 @@ function FileTabLayout({
   menuSlot: HTMLElement | null;
   tabKey: number;
   savable: boolean;
+  saveAvailability: InkcapSaveAvailability;
   narrow: boolean;
   local: boolean;
   sourceLabel?: string;
@@ -358,6 +361,7 @@ function FileTabLayout({
               dirty={document.dirty}
               saving={document.saving}
               local={local}
+              saveAvailability={saveAvailability}
               canSaveAs={Boolean(onSaveAs && !previewUrl)}
               canPreviewMarkdown={canPreviewMarkdown}
               markdownPreview={markdownPreview}
@@ -453,6 +457,7 @@ function FileTabLayout({
 
 function FileMenu({
   savable,
+  saveAvailability,
   path,
   dirty,
   saving,
@@ -470,6 +475,8 @@ function FileMenu({
   dirty: boolean;
   saving: boolean;
   local: boolean;
+  /** The Save command's own availability, so the menu cannot disagree. */
+  saveAvailability: InkcapSaveAvailability;
   canSaveAs: boolean;
   canPreviewMarkdown: boolean;
   markdownPreview: boolean;
@@ -493,7 +500,7 @@ function FileMenu({
       />
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          disabled={!savable || (!local && !dirty) || saving}
+          disabled={saveAvailability.status === "unavailable"}
           onSelect={onSave}
         >
           {saveLabel(local, dirty, saving)}

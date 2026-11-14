@@ -21,10 +21,19 @@
   margin-inline-end: auto;
   opacity: 0.65;
 }
-.inkcap-study-note > button {
+.inkcap-study-note > [role="group"] {
+  display: flex;
+  gap: var(--spacing-md);
+}
+.inkcap-study-note button {
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.2em;
+}
+.inkcap-study-note button:disabled {
+  cursor: default;
+  opacity: 0.4;
+  text-decoration: none;
 }
 .inkcap-study-note output {
   font-size: 0.75rem;

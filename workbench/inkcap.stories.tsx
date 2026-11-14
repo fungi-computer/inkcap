@@ -58,6 +58,14 @@ function Workbench({
     }),
   );
   const [notice, setNotice] = useState("");
+  const [fileMenu, setFileMenu] = useState(() => fixture.fileMenu());
+  useEffect(
+    () =>
+      fixture.onFileMenuChange(() => {
+        setFileMenu(fixture.fileMenu());
+      }),
+    [fixture],
+  );
   useEffect(() => fixture.installKeys(document.body), [fixture]);
   useEffect(() => {
     const lifecycle = { active: true };
@@ -85,6 +93,20 @@ function Workbench({
     <div className="inkcap-study" data-narrow={narrow}>
       <div className="inkcap-study-note">
         <span>Inkcap · real editor · in-memory Computer</span>
+        <div role="group" aria-label="Host File menu">
+          {fileMenu.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              disabled={!item.enabled}
+              onClick={() => {
+                void fixture.runMenuItem(item.id);
+              }}
+            >
+              {item.title}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           disabled={!canGoBack}
