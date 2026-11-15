@@ -735,7 +735,7 @@ export function useInkcapWorkbench({
         const binding = saveBindings.current.get(tab.tabKey);
         if (!binding)
           throw new Error("A dirty document is unavailable to save.");
-        await binding.save();
+        await binding.save({ announce: false });
         if (tab.target.dirty)
           throw new Error("A dirty document could not be saved.");
       }
@@ -801,7 +801,7 @@ export function useInkcapWorkbench({
         setSaveError("This document is no longer available to save.");
         return;
       }
-      void binding.save().catch((cause: unknown) => {
+      void binding.save({ announce: false }).catch((cause: unknown) => {
         setSaveError(
           cause instanceof Error
             ? cause.message
@@ -897,6 +897,7 @@ export function useInkcapWorkbench({
       if (closing === tab.tabKey && !dirty && !saving) close(tab.tabKey);
     },
     onSaveBinding,
+    onActionFailed: report,
     onSaved: (name, downloaded) => {
       void current.current?.app.ui
         .showToast({

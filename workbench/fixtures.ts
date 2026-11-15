@@ -178,6 +178,16 @@ export function createInkcapFixture(
   const capabilities = createCapabilityRegistry();
   let beforeClose: (() => boolean | Promise<boolean>) | undefined;
   let denyWrites = scenario === "failed-save";
+  // The saving story holds every write open until the story's Finish save
+  // button, so a proof acts while a save is in flight without racing a timer.
+  let finishSave: () => void = () => undefined;
+  const saveGate = new Promise<void>((resolve) => {
+    finishSave = resolve;
+  });
+  const writeDelay = (): Promise<void> =>
+    scenario === "saving"
+      ? saveGate
+      : new Promise<void>((resolve) => setTimeout(resolve, 350));
   const register: typeof capabilities.provide = (contract, value) => {
     if (
       scenario !== "unavailable" &&
@@ -305,9 +315,7 @@ export function createInkcapFixture(
   });
   register(computerWriteFile, {
     replace: async ({ path, expectedContent, content }) => {
-      await new Promise((resolve) =>
-        setTimeout(resolve, scenario === "saving" ? 3500 : 350),
-      );
+      await writeDelay();
       if (denyWrites)
         throw new Error("The workbench Computer denied this write.");
       if (files.get(path) !== expectedContent) return { kind: "conflict" };
@@ -330,9 +338,7 @@ export function createInkcapFixture(
           new (class extends RpcTarget {
             async write(content: ReadableStream<Uint8Array>) {
               const text = await new Response(content).text();
-              await new Promise((resolve) =>
-                setTimeout(resolve, scenario === "saving" ? 3500 : 350),
-              );
+              await writeDelay();
               if (denyWrites)
                 throw new Error("The workbench Computer denied this write.");
               files.set(path, text);
@@ -420,6 +426,9 @@ export function createInkcapFixture(
     connection: { app },
     computerId,
     files,
+    finishSave: () => {
+      finishSave();
+    },
     allowWrites() {
       denyWrites = false;
     },

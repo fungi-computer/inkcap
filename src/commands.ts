@@ -95,7 +95,8 @@ export type InkcapSaveAvailability =
 /** The live operation and state owner for one mounted document. */
 export type InkcapSaveBinding = Readonly<{
   availability: () => InkcapSaveAvailability;
-  save: () => Promise<boolean>;
+  /** Dialogs that show a failed save themselves pass `announce: false`. */
+  save: (options?: { announce?: boolean }) => Promise<boolean>;
   /** Whether Save As applies to this document now. */
   saveAsAvailability: () => InkcapSaveAvailability;
   /** Ask where to save a copy; the dialog owns the rest. */

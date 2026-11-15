@@ -122,6 +122,7 @@ export type InkcapViewModel = {
     binding: InkcapSaveBinding | undefined,
   ) => void;
   onSaved: (name: string, downloaded: boolean) => void;
+  onActionFailed: (message: string) => void;
   onWrite: (
     tab: Tab,
     contents: string,
@@ -702,6 +703,7 @@ export function InkcapView({
                 saveAsDirectory={saveAsDirectory(tab)}
                 downloads={downloadsFor(tab)}
                 onSaved={model.onSaved}
+                onFailure={model.onActionFailed}
                 onSaveAs={async (path, contents) => {
                   const acceptedPath = savePath(tab, path);
                   await model.onSaveAs(tab, acceptedPath, contents);

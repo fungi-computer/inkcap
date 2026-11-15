@@ -9,6 +9,10 @@ export type DocumentTarget = {
   saving: boolean;
 };
 
+function leafOf(path: string): string {
+  return path.split("/").at(-1) ?? path;
+}
+
 export function useFileDocument({
   path,
   initial,
@@ -16,6 +20,7 @@ export function useFileDocument({
   onSaveAs,
   onPathChange,
   onStatus,
+  onFailure,
   write,
   overwrite,
   readCurrent,
@@ -28,6 +33,8 @@ export function useFileDocument({
   onSaveAs?: (path: string, contents: string) => Promise<string>;
   onPathChange?: (path: string) => void;
   onStatus: (dirty: boolean, saving: boolean) => void;
+  /** Told a fixed sentence when a save or conflict action fails; the host toasts it. */
+  onFailure: (message: string) => void;
   write: (contents: string, expectedContent: string) => Promise<void>;
   overwrite: (contents: string) => Promise<void>;
   readCurrent: (reload: boolean) => Promise<string>;
@@ -42,6 +49,7 @@ export function useFileDocument({
   const saveAsRef = useRef(onSaveAs);
   const pathChangeRef = useRef(onPathChange);
   const statusRef = useRef(onStatus);
+  const failureRef = useRef(onFailure);
   const targetRef = useRef(target);
   writeRef.current = write;
   overwriteRef.current = overwrite;
@@ -49,6 +57,7 @@ export function useFileDocument({
   saveAsRef.current = onSaveAs;
   pathChangeRef.current = onPathChange;
   statusRef.current = onStatus;
+  failureRef.current = onFailure;
   targetRef.current = target;
 
   const [dirty, setDirty] = useState(false);
@@ -99,7 +108,13 @@ export function useFileDocument({
     );
   }
 
-  async function save(): Promise<boolean> {
+  /**
+   * Save writes the file. A failure is announced to the host unless the caller
+   * is a dialog that already shows it, so each failure has one place.
+   */
+  async function save({
+    announce = true,
+  }: { announce?: boolean } = {}): Promise<boolean> {
     if (busy.current || conflict || externalConflict.current) return false;
     // Save stays available while typing, before the host receives dirty status.
     // An already saved document is a successful no-op.
@@ -122,10 +137,12 @@ export function useFileDocument({
       }
       console.error("Inkcap save failed", cause);
 
+      const name = leafOf(currentPath.current);
       const message = local
-        ? "Download could not start. Your edits remain in this tab."
-        : "Save was denied or failed. Your edits remain in this tab; retry with the same or another path.";
+        ? `Couldn't download ${name}. Your edits are still here; try again.`
+        : `Couldn't save ${name}. Your edits are still here; try again.`;
       setError(message);
+      if (announce) failureRef.current(message);
       throw new Error(message, { cause });
     } finally {
       busy.current = false;
@@ -148,7 +165,9 @@ export function useFileDocument({
     } catch (cause) {
       if (cause instanceof AppError && cause.code === "CANCELLED") return false;
       console.error("Inkcap explicit overwrite failed", cause);
-      setError("Could not overwrite the file. Your edits remain in this tab.");
+      failureRef.current(
+        `Couldn't replace ${leafOf(currentPath.current)}. Your edits are still here; try again.`,
+      );
       return false;
     } finally {
       busy.current = false;
@@ -174,8 +193,8 @@ export function useFileDocument({
         draft.current.contents !== before ||
         targetRef.current?.revision !== revision
       ) {
-        setError(
-          "Your edits changed while reloading. They remain in this tab; compare or reload again.",
+        failureRef.current(
+          `Couldn't reload ${leafOf(currentPath.current)}; you kept typing. Your edits are still here; try again.`,
         );
         return false;
       }
@@ -188,7 +207,9 @@ export function useFileDocument({
       return true;
     } catch (cause) {
       console.error("Inkcap conflict read failed", cause);
-      setError("Could not read the file. Your edits remain in this tab.");
+      failureRef.current(
+        `Couldn't read ${leafOf(currentPath.current)}. Your edits are still here; try again.`,
+      );
       return false;
     } finally {
       busy.current = false;
@@ -198,7 +219,8 @@ export function useFileDocument({
 
   async function saveAs(nextPath: string): Promise<boolean> {
     const normalizedPath = nextPath.trim();
-    if (!local && normalizedPath === currentPath.current) return save();
+    if (!local && normalizedPath === currentPath.current)
+      return save({ announce: false });
     if (!normalizedPath || normalizedPath.endsWith("/") || busy.current)
       return false;
     busy.current = true;

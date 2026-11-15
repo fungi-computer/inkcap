@@ -64,6 +64,7 @@ export function FileTab({
   saveAsDirectory,
   downloads = false,
   onSaved,
+  onFailure,
   syncConflict = false,
 }: {
   path: string;
@@ -97,6 +98,8 @@ export function FileTab({
   /** Told the file name after every save, for the host toast. */
   onSaved?: (name: string, downloaded: boolean) => void;
   onStatus: (dirty: boolean, saving: boolean) => void;
+  /** Told a fixed failure sentence, for the host toast. */
+  onFailure: (message: string) => void;
   onSaveBinding: (
     tabKey: number,
     binding: InkcapSaveBinding | undefined,
@@ -118,6 +121,7 @@ export function FileTab({
     onSaveAs,
     onPathChange,
     onStatus,
+    onFailure,
     target,
     write,
     overwrite,
@@ -159,14 +163,16 @@ export function FileTab({
   dirtyRef.current = document.dirty;
   closedRef.current = target?.closed ?? false;
   canSaveAsRef.current = Boolean(onSaveAs && !previewUrl);
-  const saveAndAnnounce = async (): Promise<boolean> => {
+  const saveAndAnnounce = async (options?: {
+    announce?: boolean;
+  }): Promise<boolean> => {
     if (localRef.current) {
       setSaveAsOpen(true);
       return true;
     }
     const pending = pendingText();
     if (pending !== null) editRef.current(pending);
-    const saved = await saveRef.current();
+    const saved = await saveRef.current(options);
     if (saved)
       onSavedRef.current?.(leafOf(pathRef.current), downloadsRef.current);
     return saved;
@@ -186,7 +192,7 @@ export function FileTab({
           saving: target?.saving ?? savingRef.current,
           dirty: dirtyRef.current,
         }),
-      save: () => saveAndAnnounce(),
+      save: (options) => saveAndAnnounce(options),
       saveAsAvailability: () => {
         if (closedRef.current || !canSaveAsRef.current)
           return {
@@ -405,18 +411,6 @@ function FileTabLayout({
         sourceLabel={sourceLabel}
         savedConflict={savedConflict}
       />
-      {document.error ? (
-        <Alert
-          className="inkcap-notice"
-          tone="error"
-          title={
-            document.conflict
-              ? "Couldn't resolve the file conflict"
-              : "Couldn't save"
-          }
-          description={document.error}
-        />
-      ) : null}
       <FileContent
         // The editor binds to one file; Save As renames it, so it gets a new one.
         key={`${String(document.reloadVersion)}:${document.currentPath}`}

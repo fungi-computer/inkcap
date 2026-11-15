@@ -148,7 +148,17 @@ function Workbench({
             Allow writes
           </button>
         ) : null}
-        {scenario === "saving" ? <span>Saves take 3.5 seconds.</span> : null}
+        {scenario === "saving" ? (
+          <button
+            type="button"
+            onClick={() => {
+              fixture.finishSave();
+              setNotice("Save finished.");
+            }}
+          >
+            Finish save
+          </button>
+        ) : null}
         <output>{notice}</output>
       </div>
       {scenario === "dirty" ? (

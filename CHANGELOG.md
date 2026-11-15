@@ -1,5 +1,14 @@
 # @fungi.computer/inkcap
 
+## 0.14.6
+
+### Patch Changes
+
+- Changes since 0.14.5:
+
+  - fix(inkcap): shorten save failure copy and report each failure once
+  - fix(inkcap): show a failed file save as a host toast
+
 ## 0.14.5
 
 ### Patch Changes
