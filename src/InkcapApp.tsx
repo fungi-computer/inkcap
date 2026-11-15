@@ -180,7 +180,7 @@ function applyOpenedFile(
   replacement: Tab | undefined,
   revision: number | undefined,
   replaceKey: number | undefined,
-  setError: (message: string) => void,
+  report: (message: string) => void,
   removeReplacement: (tab: Tab | undefined, key: number) => void,
   add: (
     path: string,
@@ -192,11 +192,10 @@ function applyOpenedFile(
 ): void {
   const error = openedFileError(result, path, replacement, revision);
   if (error) {
-    setError(error);
+    report(error);
     return;
   }
   if (replaceKey !== undefined) removeReplacement(replacement, replaceKey);
-  setError("");
   if (result.kind === "image" || result.kind === "video")
     add(path, "", selected, URL.createObjectURL(result.blob), result.kind);
   if (result.kind === "text") add(path, result.contents, selected);
@@ -289,7 +288,9 @@ export function useInkcapWorkbench({
   const [closing, setClosing] = useState<number | null>(null);
   const [windowClosing, setWindowClosing] = useState(false);
   const [windowCloseSaving, setWindowCloseSaving] = useState(false);
-  const [error, setError] = useState("");
+  // The Unsaved dialog reports a failed save in the dialog; every other action
+  // failure is a host toast so the file tree and editor never move.
+  const [saveError, setSaveError] = useState("");
   const [downloadedFile, setDownloadedFile] = useState<{
     tabKey: number;
     name: string;
@@ -343,6 +344,22 @@ export function useInkcapWorkbench({
       reads.current.clear();
     },
     [],
+  );
+
+  const report = useCallback(
+    (message: string): void => {
+      const app = current.current?.app ?? connection?.app;
+      if (!app) {
+        console.error("Inkcap action failed without an App host", message);
+        return;
+      }
+      void app.ui
+        .showToast({ message, tone: "error" })
+        .catch((cause: unknown) => {
+          console.error("Inkcap failure toast failed", cause);
+        });
+    },
+    [connection],
   );
 
   tabsRef.current = tabs;
@@ -481,7 +498,7 @@ export function useInkcapWorkbench({
         replacement,
         revision,
         replaceKey,
-        setError,
+        report,
         removeReplacement,
         (path, initial, selected, previewUrl, previewKind) => {
           add(
@@ -501,7 +518,7 @@ export function useInkcapWorkbench({
       // report then would land after the window is gone.
       if (controller.signal.aborted) return;
       console.error("Inkcap file read failed", cause);
-      setError(
+      report(
         cause instanceof AppError && cause.code === "FILE_TOO_LARGE"
           ? selected.source?.kind === "repository"
             ? "This repository file is too large to edit in Inkcap. Choose a smaller file. Existing edits remain open."
@@ -528,14 +545,14 @@ export function useInkcapWorkbench({
     const tab = tabs.find((item) => item.tabKey === tabKey);
     if (!tab) return;
     if (tab.target.saving) {
-      setError(
+      report(
         "Wait for this save to finish before closing. Your edits remain open.",
       );
       return;
     }
     if (tab.target.dirty && !discard) {
       setClosing(tabKey);
-      setError("");
+      setSaveError("");
       return;
     }
     tab.target.closed = true;
@@ -565,9 +582,7 @@ export function useInkcapWorkbench({
       path: location.path,
     });
     if (!target.success || connection.source?.kind === "repository") {
-      setError(
-        "This Recent File is unavailable on the current Computer source.",
-      );
+      report("This Recent File is unavailable on the current Computer source.");
       return;
     }
     let active = true;
@@ -579,14 +594,14 @@ export function useInkcapWorkbench({
         Redacted.make(cause),
       );
       if (current.current === connection)
-        setError(
+        report(
           "This Recent File could not be opened. Your existing documents remain open.",
         );
     });
     return () => {
       active = false;
     };
-  }, [connection, computerId, openRequest]);
+  }, [connection, computerId, openRequest, report]);
 
   async function withSource<T>(
     selected: Connection,
@@ -602,7 +617,7 @@ export function useInkcapWorkbench({
     ) {
       const message =
         "Select this file's original Computer before saving or reloading. Your edits remain open.";
-      setError(message);
+      report(message);
       throw new Error(message);
     }
     const controller = new AbortController();
@@ -652,22 +667,22 @@ export function useInkcapWorkbench({
     const selected = tab.connection;
     if (!selected) return;
     if (tab.target.saving) {
-      setError("Wait for this save to finish before reopening.");
+      report("Wait for this save to finish before reopening.");
       return;
     }
     if (tab.target.dirty) {
-      setError("Save your edits before reopening this file.");
+      report("Save your edits before reopening this file.");
       return;
     }
     if (!isConnectionUsable(selected)) {
-      setError("Computer disconnected. Existing edits remain open.");
+      report("Computer disconnected. Existing edits remain open.");
       return;
     }
     if (
       selected.source?.kind !== "repository" &&
       selected.app.context.get().computerId !== tab.computerId
     ) {
-      setError(
+      report(
         "Select this file's original Computer before reopening. Existing edits remain open.",
       );
       return;
@@ -700,7 +715,7 @@ export function useInkcapWorkbench({
     if (!tabsRef.current.some((tab) => tab.target.dirty))
       return Promise.resolve(true);
     if (tabsRef.current.some((tab) => tab.target.saving)) {
-      setError("Wait for the current save to finish before closing Inkcap.");
+      report("Wait for the current save to finish before closing Inkcap.");
       return Promise.resolve(false);
     }
     let resolve!: (accepted: boolean) => void;
@@ -708,10 +723,10 @@ export function useInkcapWorkbench({
       resolve = complete;
     });
     windowClosePending.current = { promise, resolve };
-    setError("");
+    setSaveError("");
     setWindowClosing(true);
     return promise;
-  }, []);
+  }, [report]);
   const saveAndCloseWindow = useCallback(async (): Promise<void> => {
     if (!windowClosePending.current || windowCloseSaving) return;
     setWindowCloseSaving(true);
@@ -726,7 +741,7 @@ export function useInkcapWorkbench({
       }
       finishWindowClose(true);
     } catch (cause) {
-      setError(
+      setSaveError(
         cause instanceof Error
           ? `${cause.message} Inkcap remains open.`
           : "A document could not be saved. Inkcap remains open.",
@@ -739,7 +754,7 @@ export function useInkcapWorkbench({
     selectedConnection,
     canList,
     context: selectedContext,
-    error,
+    saveError,
     downloadedFile,
     activityNotice,
     onDismissActivityNotice: () => {
@@ -765,16 +780,12 @@ export function useInkcapWorkbench({
     onChooseComputer: () => {
       const app = current.current?.app;
       if (!app) {
-        setError("The Computer picker requires a connected App host.");
+        report("The Computer picker requires a connected App host.");
         return;
       }
       void app.ui.requestComputerChoice().catch((cause: unknown) => {
         console.error("Inkcap Computer choice failed", Redacted.make(cause));
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Couldn't open the Computer picker.",
-        );
+        report("The Computer picker could not be opened. Try again.");
       });
     },
     onOpenFile: (path) => {
@@ -787,11 +798,11 @@ export function useInkcapWorkbench({
     onSaveClose: (tabKey) => {
       const binding = saveBindings.current.get(tabKey);
       if (!binding) {
-        setError("This document is no longer available to save.");
+        setSaveError("This document is no longer available to save.");
         return;
       }
       void binding.save().catch((cause: unknown) => {
-        setError(
+        setSaveError(
           cause instanceof Error
             ? cause.message
             : "Couldn't save. Your document remains open.",

@@ -327,7 +327,7 @@ export function InkcapRepositoryApp({
           },
           error: snapshot.error
             ? `${describeAppError(snapshot.error).message} Your open edits remain available.`
-            : model.error,
+            : undefined,
           fileTree: (onOpenFile, narrow) => (
             <RepositoryTree
               key={narrow ? "phone" : "desktop"}

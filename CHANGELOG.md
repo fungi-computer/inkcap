@@ -1,5 +1,14 @@
 # @fungi.computer/inkcap
 
+## 0.14.5
+
+### Patch Changes
+
+- Changes since 0.14.4:
+
+  - fix(oyster): show App toasts on the standalone App page
+  - fix(inkcap): show action failures as host toasts
+
 ## 0.14.4
 
 ### Patch Changes

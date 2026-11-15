@@ -83,7 +83,10 @@ export type InkcapViewModel = {
   selectedConnection: Connection | null;
   canList: boolean;
   context: InkcapContext;
-  error: string;
+  // A load failure the host cannot toast away (repository snapshot); action
+  // failures are host toasts.
+  error?: string;
+  saveError: string;
   downloadedFile: { tabKey: number; name: string } | null;
   repositoryStatus?: string;
   repositoryStates?: ReadonlyMap<string, FileSaveResult>;
@@ -881,7 +884,7 @@ export function InkcapView({
             (tab) => tab.tabKey === model.closing && tab.target.saving,
           )
         }
-        error={model.error}
+        error={model.saveError}
         onSave={
           model.windowClosing
             ? model.onSaveWindowClose

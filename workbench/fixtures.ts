@@ -406,8 +406,9 @@ export function createInkcapFixture(
       openDesktopSettings: () => Promise.resolve(),
       reportAgentSessionSelection: () => Promise.resolve(),
       showToast: ({ message, tone }) => {
-        if (tone === "success") toast.success(message);
-        else toast(message);
+        // The real host picks the Caps status dot from the tone.
+        if (tone === undefined) toast(message);
+        else toast[tone](message);
         return Promise.resolve();
       },
     },
