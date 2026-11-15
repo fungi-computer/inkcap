@@ -14,7 +14,7 @@ import {
   useState,
 } from "react";
 import {
-  ChevronsUpDown,
+  ChevronDown,
   FileCode2,
   FileDiff,
   FilePlus2,
@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { LoadingState } from "@fungi.computer/caps/blocks/loading-state";
 import { Button } from "@fungi.computer/caps/components/button";
+import { CountBadge } from "@fungi.computer/caps/components/count-badge";
 import { EmptyState } from "@fungi.computer/caps/blocks/empty-state";
 import {
   Tabs,
@@ -580,10 +581,11 @@ export function InkcapView({
                         aria-label={`Open files, ${String(model.tabs.length + diffs.length)}`}
                         title="Open files"
                       >
-                        <ChevronsUpDown aria-hidden="true" />
-                        <span className="tabular-nums">
-                          {model.tabs.length + diffs.length}
-                        </span>
+                        <CountBadge
+                          count={model.tabs.length + diffs.length}
+                          aria-hidden="true"
+                        />
+                        <ChevronDown aria-hidden="true" />
                       </Button>
                     }
                   />

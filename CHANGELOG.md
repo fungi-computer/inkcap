@@ -1,5 +1,18 @@
 # @fungi.computer/inkcap
 
+## 0.14.4
+
+### Patch Changes
+
+- Changes since 0.14.3:
+
+  - fix(inkcap): left-align the phone tab label and quiet the switcher count
+  - fix(inkcap): center the phone tab label and show a count badge on the
+    switcher
+
+- Updated dependencies
+  - @fungi.computer/computer-contract@0.5.0
+
 ## 0.14.3
 
 ### Patch Changes

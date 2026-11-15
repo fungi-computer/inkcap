@@ -181,6 +181,13 @@ body,
   padding-inline: var(--spacing-xs);
   font-size: 0.75rem;
 }
+.inkcap-tab-list .badge.badge-neutral {
+  /* The chevron says "menu"; the count stays quiet beside it instead of
+     reading as an unread badge. */
+  background: transparent;
+  color: var(--stipe-fg-muted);
+  border-color: var(--stipe-fg-muted);
+}
 .inkcap-tab-list > svg {
   width: 0.875rem;
   height: 0.875rem;
@@ -580,6 +587,24 @@ body,
   flex: 1 1 0;
   max-width: none;
   padding-inline: var(--spacing-xs);
+  justify-content: flex-start;
+}
+/* The tab fills the strip so a long name can ellipsize, but the underline
+   belongs to the label alone: it is exactly as wide as the text, which starts
+   at the tab's edge. */
+.inkcap-app[data-narrow]
+  .inkcap-tabs
+  [role="tab"][aria-selected="true"]::before {
+  display: none;
+}
+.inkcap-app[data-narrow]
+  .inkcap-tabs
+  [role="tab"][aria-selected="true"]
+  > span:first-of-type {
+  flex: 0 1 auto;
+  align-self: stretch;
+  line-height: calc(var(--inkcap-strip-height) - 3px);
+  border-bottom: 3px solid var(--color-base-content);
 }
 /* The file icon is spent on the name; the diff tab keeps its icon, since that
    is what tells it from the file's own tab. */
