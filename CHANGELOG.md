@@ -1,5 +1,20 @@
 # @fungi.computer/inkcap
 
+## 0.15.0
+
+### Minor Changes
+
+- Changes since 0.14.10:
+
+  - feat(apps): require one host-derived caller scope
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/agar@0.20.0
+  - @fungi.computer/nacre@0.7.2
+  - @fungi.computer/computer-contract@0.5.3
+
 ## 0.14.10
 
 ### Patch Changes
