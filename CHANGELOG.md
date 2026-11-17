@@ -1,5 +1,21 @@
 # @fungi.computer/inkcap
 
+## 0.16.0
+
+### Minor Changes
+
+- Changes since 0.15.0:
+
+  - feat(gills): declare surface Gills beside row Gills
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.21.0
+  - @fungi.computer/nacre@0.8.0
+  - @fungi.computer/computer-contract@0.5.4
+
 ## 0.15.0
 
 ### Minor Changes

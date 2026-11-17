@@ -8,6 +8,7 @@ import {
 
 /** The source pages saved actor/Computer activity; rendering never probes files. */
 export const recentFilesGill = defineAppGill({
+  view: "rows",
   id: "recent-files",
   title: "Recent Files",
   source: "documents.recent",
