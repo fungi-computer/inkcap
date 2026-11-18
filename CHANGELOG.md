@@ -1,5 +1,12 @@
 # @fungi.computer/inkcap
 
+## 0.16.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/caps@0.12.2
+
 ## 0.16.5
 
 ### Patch Changes
