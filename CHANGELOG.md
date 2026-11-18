@@ -1,5 +1,17 @@
 # @fungi.computer/inkcap
 
+## 0.16.2
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.22.0
+  - @fungi.computer/caps@0.12.1
+  - @fungi.computer/nacre@0.8.1
+  - @fungi.computer/computer-contract@0.5.6
+
 ## 0.16.1
 
 ### Patch Changes

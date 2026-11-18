@@ -10,7 +10,22 @@ Inkcap is one of the starter Apps of
 on your own Cloudflare account. On Oyster, the Computer is a Linux workspace in
 a Cloudflare Container, and Inkcap reads and writes its `/workspace`.
 
-## What you can do
+## Quick start
+
+In a Fungi monorepo checkout with dependencies installed, run the component
+workbench from the root:
+
+```sh
+pnpm workbench:prepare
+pnpm exec ladle serve --port 61983
+```
+
+Open <http://localhost:61983/?story=inkcap--workspace&mode=preview&theme=light>.
+This is Inkcap's real UI with local fixture data (an in-memory Computer with
+sample files), not a live Oyster. To run Inkcap on a real Oyster, see
+[Get it](#get-it).
+
+## Common tasks
 
 - Browse the Computer's folders and open files in tabs.
 - Edit text with syntax highlighting, and save with **Ctrl+S** / **⌘S**.
@@ -27,7 +42,9 @@ cancel. On a phone, **Open file explorer** brings the explorer over the editor.
 
 <img alt="Inkcap on a phone in the light theme, with no file open and a New draft button" src="docs/media/new-draft-phone.png" width="300">
 
-## Get it
+## Reference
+
+### Get it
 
 Inkcap installs with the other starter Apps. On a deployed Oyster (see the
 [Oyster quick start](https://github.com/fungi-computer/oyster#deploy-to-cloudflare)),
@@ -44,7 +61,7 @@ Oyster with `git push`, builds them on your Computer and installs them. Sign in
 at `$OYSTER_URL/login` with the owner key and open Inkcap from the Tourtois
 desktop. Run `install-apps` again to update; each App keeps its data.
 
-## Change it
+### Change it
 
 Every installed App is also a template you can fork on your own Oyster. Fork
 Inkcap into a Bonsai repository and clone it with ordinary `git`:
@@ -67,7 +84,7 @@ your forks with `--repositories <base URL>` and `--ref <branch or tag>`. The
 installer reads all seven starter Apps from that base, so fork them under one
 account.
 
-## Agent tools
+### Agent tools
 
 Agents call Inkcap through Oyster's MCP endpoint, or at
 `POST $OYSTER_URL/apps/inkcap/methods/<name>` with a key; see
@@ -83,7 +100,7 @@ Agents call Inkcap through Oyster's MCP endpoint, or at
 Paths are absolute and cannot contain `..`. A read-only attachment cannot write,
 and the host picks the Computer: no argument selects one.
 
-## Build and check
+### Build and check
 
 Inkcap is a React App built with Vite. The file tree and editor come from
 `@pierre/trees` and `@pierre/diffs`, and the controls from
@@ -102,7 +119,7 @@ draft, its saved baseline and conflict recovery. The agent tools are in
 [backend/methods.ts](backend/methods.ts), and [package.json](package.json)
 declares the permissions the App asks for.
 
-## License
+### License
 
 MIT. See [LICENSE](LICENSE).
 
