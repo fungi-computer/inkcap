@@ -12,6 +12,7 @@ import {
   type DocumentActivityStore,
 } from "./document-activity.js";
 import * as z from "zod";
+import { computerRefusalMessage } from "@fungi.computer/agar/computer-contracts";
 import { filesNavigateIntent } from "@fungi.computer/agar/roles/files";
 import type { AppMethodCallContext } from "@fungi.computer/puffball/app-method-runtime";
 import {
@@ -270,7 +271,7 @@ export const appBackend = defineAppBackend({
                 detail:
                   output.error === "parent_not_found"
                     ? "That folder does not exist on the Computer"
-                    : output.error,
+                    : computerRefusalMessage(output.error),
                 tone: "error",
               }
             : {

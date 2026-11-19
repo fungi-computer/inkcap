@@ -1,5 +1,18 @@
 # @fungi.computer/inkcap
 
+## 0.16.9
+
+### Patch Changes
+
+- Changes since 0.16.8:
+
+  - fix(apps): send named Computer refusals only to Apps that opt in
+  - fix(apps): name each Computer refusal in plain words
+
+- Updated dependencies
+  - @fungi.computer/agar@0.24.0
+  - @fungi.computer/nacre@0.8.6
+
 ## 0.16.8
 
 ### Patch Changes
