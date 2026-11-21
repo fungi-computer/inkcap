@@ -1,3 +1,4 @@
+import { describeComputerRefusal } from "@fungi.computer/agar/computer";
 import * as z from "zod";
 import type { AppRoot } from "@fungi.computer/agar";
 import { appMethods } from "@fungi.computer/agar/backend";
@@ -21,11 +22,16 @@ export function changesQuery(app: AppRoot | null, root: string) {
         await handle.call("gitChanges", JSON.stringify({ path: root })),
       );
       signal.throwIfAborted();
-      if ("error" in reply)
-        throw new AppError(
-          "Changes could not be read from the Computer. Try again.",
-          { code: "HOST_FAILURE", retryable: true },
-        );
+      if ("error" in reply) {
+        const refusal = describeComputerRefusal(reply);
+        throw new AppError(refusal.message, {
+          code:
+            refusal.reason === "not-granted"
+              ? "CAPABILITY_DENIED"
+              : "HOST_FAILURE",
+          retryable: refusal.reason !== "not-granted",
+        });
+      }
       return reply;
     },
   );

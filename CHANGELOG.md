@@ -1,5 +1,22 @@
 # @fungi.computer/inkcap
 
+## 0.18.1
+
+### Patch Changes
+
+- Changes since 0.18.0:
+
+  - fix(shed): name why a Shed, Bonsai, Inkcap or TUI action failed
+  - fix(agar): end a failure message with a period
+  - fix(grove): chat widget names its start failure once, in a toast
+  - fix(grove): every launch App failure toast names its real cause
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.27.1
+  - @fungi.computer/computer-contract@0.6.3
+  - @fungi.computer/nacre@0.9.2
+
 ## 0.18.0
 
 ### Minor Changes

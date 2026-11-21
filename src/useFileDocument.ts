@@ -1,4 +1,4 @@
-import { AppError } from "@fungi.computer/agar/errors";
+import { AppError, typedFailureMessage } from "@fungi.computer/agar/errors";
 import { useRef, useState } from "react";
 import { acknowledgeSave, editDraft, isDirty } from "./draft.js";
 
@@ -138,9 +138,10 @@ export function useFileDocument({
       console.error("Inkcap save failed", cause);
 
       const name = leafOf(currentPath.current);
-      const message = local
-        ? `Couldn't download ${name}. Your edits are still here; try again.`
-        : `Couldn't save ${name}. Your edits are still here; try again.`;
+      const message = `${typedFailureMessage(
+        local ? `Couldn't download ${name}` : `Couldn't save ${name}`,
+        cause,
+      )} Your edits are still here.`;
       setError(message);
       if (announce) failureRef.current(message);
       throw new Error(message, { cause });
@@ -166,7 +167,7 @@ export function useFileDocument({
       if (cause instanceof AppError && cause.code === "CANCELLED") return false;
       console.error("Inkcap explicit overwrite failed", cause);
       failureRef.current(
-        `Couldn't replace ${leafOf(currentPath.current)}. Your edits are still here; try again.`,
+        `${typedFailureMessage(`Couldn't replace ${leafOf(currentPath.current)}`, cause)} Your edits are still here.`,
       );
       return false;
     } finally {
@@ -194,7 +195,7 @@ export function useFileDocument({
         targetRef.current?.revision !== revision
       ) {
         failureRef.current(
-          `Couldn't reload ${leafOf(currentPath.current)}; you kept typing. Your edits are still here; try again.`,
+          `Couldn't reload ${leafOf(currentPath.current)}: you kept typing. Your edits are still here.`,
         );
         return false;
       }
@@ -208,7 +209,7 @@ export function useFileDocument({
     } catch (cause) {
       console.error("Inkcap conflict read failed", cause);
       failureRef.current(
-        `Couldn't read ${leafOf(currentPath.current)}. Your edits are still here; try again.`,
+        `${typedFailureMessage(`Couldn't read ${leafOf(currentPath.current)}`, cause)} Your edits are still here.`,
       );
       return false;
     } finally {
