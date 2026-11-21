@@ -572,42 +572,44 @@ body,
   width: 0.875rem;
   height: 0.875rem;
 }
-/* On a phone the strip shows only the open tab, whole, with its close button:
-   it takes every pixel the other controls leave, so the name reads in full.
-   The other tabs are one tap away in the switcher beside it. */
-.inkcap-app[data-narrow] .inkcap-tabs {
-  overflow: hidden;
-  mask-image: none;
-}
-.inkcap-app[data-narrow] .inkcap-tabs [role="tab"][aria-selected="false"],
-.inkcap-app[data-narrow] .inkcap-tabs [role="tab"][aria-selected="false"] + * {
-  display: none;
-}
-.inkcap-app[data-narrow] .inkcap-tabs [role="tab"][aria-selected="true"] {
+/* A phone's strip is one switcher: the open file's whole name, its count and
+   a chevron, on a 32px row that grows to 44px only under touch. */
+.inkcap-file-switcher {
   flex: 1 1 0;
-  max-width: none;
-  padding-inline: var(--spacing-xs);
+  min-width: 0;
   justify-content: flex-start;
+  gap: var(--spacing-xs);
+  padding-inline: var(--spacing-xs);
+  font-weight: 600;
 }
-/* The tab fills the strip so a long name can ellipsize, but the underline
-   belongs to the label alone: it is exactly as wide as the text, which starts
-   at the tab's edge. */
-.inkcap-app[data-narrow]
-  .inkcap-tabs
-  [role="tab"][aria-selected="true"]::before {
-  display: none;
+.inkcap-file-switcher > svg {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
 }
-.inkcap-app[data-narrow]
-  .inkcap-tabs
-  [role="tab"][aria-selected="true"]
-  > span:first-of-type {
-  flex: 0 1 auto;
-  align-self: stretch;
-  line-height: calc(var(--inkcap-strip-height) - 3px);
-  border-bottom: 3px solid var(--color-base-content);
+.inkcap-file-switcher > svg:first-child {
+  color: var(--stipe-fg-muted);
 }
-/* The file icon is spent on the name; the diff tab keeps its icon, since that
-   is what tells it from the file's own tab. */
-.inkcap-app[data-narrow] .inkcap-tab-file > svg {
+.inkcap-file-switcher-note {
+  flex: none;
+  color: var(--stipe-fg-muted);
+  font-weight: 400;
+}
+.inkcap-file-switcher-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inkcap-file-switcher .badge.badge-neutral {
+  flex: none;
+  background: transparent;
+  color: var(--stipe-fg-muted);
+  border-color: var(--stipe-fg-muted);
+}
+.inkcap-file-switcher-menu {
+  min-width: 14rem;
+}
+.inkcap-tabs[hidden] {
   display: none;
 }

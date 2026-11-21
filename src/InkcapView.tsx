@@ -39,6 +39,8 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@fungi.computer/caps/components/dropdown-menu";
 import {
@@ -286,8 +288,8 @@ export function InkcapView({
   // its close button, fully inside the strip by the shortest scroll that rests
   // on a whole tab's edge; a neighbour that does not fit hides whole, and the
   // edge fade says the strip scrolls. Mark which sides hide tabs so CSS fades
-  // only those. A phone shows the open tab alone (CSS), so nothing scrolls
-  // there. Tab widths settle after first paint (fonts, names), so a resize of
+  // only those. A phone hides the strip behind the file switcher. Tab widths
+  // settle after first paint (fonts, names), so a resize of
   // the strip or any tab repeats it.
   useEffect(() => {
     const strip = root.current?.querySelector<HTMLElement>(".inkcap-tabs");
@@ -514,7 +516,32 @@ export function InkcapView({
                 <PanelLeft aria-hidden="true" /> Files
               </Button>
             )}
-            <TabsList className="inkcap-tabs gap-0" aria-label="Editor tabs">
+            {narrow && (model.tabs.length > 0 || diffs.length > 0) ? (
+              <FileSwitcher
+                tabs={model.tabs}
+                diffs={diffs}
+                active={model.active}
+                activeDiff={activeDiff}
+                onActivate={(tab) => {
+                  setActiveDiff(null);
+                  model.onActivate(tab.tabKey);
+                }}
+                onActivateDiff={setActiveDiff}
+                onClose={(tab) => {
+                  model.onClose(tab.tabKey);
+                }}
+                onCloseDiff={closeDiff}
+                onNewDraft={model.onNewDraft}
+              />
+            ) : null}
+            <TabsList
+              className="inkcap-tabs gap-0"
+              aria-label="Editor tabs"
+              // A phone lists open files in the switcher alone, so assistive
+              // tech meets one list, never two.
+              hidden={narrow}
+              aria-hidden={narrow ? true : undefined}
+            >
               {model.tabs.map((tab) => (
                 <Fragment key={tab.tabKey}>
                   <TabsTrigger
@@ -555,10 +582,7 @@ export function InkcapView({
                     aria-label={`Changes to ${path}`}
                   >
                     <FileDiff aria-hidden="true" />
-                    <span>
-                      {path.split("/").at(-1)}
-                      {narrow ? "" : " (changes)"}
-                    </span>
+                    <span>{path.split("/").at(-1)} (changes)</span>
                   </TabsTrigger>
                   <IconButton
                     size="responsive"
@@ -573,8 +597,7 @@ export function InkcapView({
               ))}
             </TabsList>
             <div className="inkcap-tab-actions">
-              {tabsOverflow ||
-              (narrow && model.tabs.length + diffs.length > 1) ? (
+              {tabsOverflow && !narrow ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -624,13 +647,16 @@ export function InkcapView({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
-              <IconButton
-                size="responsive"
-                icon={<FilePlus2 />}
-                aria-label="New draft"
-                title={`New draft (${leaderText()}, then N)`}
-                onClick={model.onNewDraft}
-              />
+              {/* A phone with files open offers New draft in the switcher. */}
+              {narrow && model.tabs.length + diffs.length > 0 ? null : (
+                <IconButton
+                  size="responsive"
+                  icon={<FilePlus2 />}
+                  aria-label="New draft"
+                  title={`New draft (${leaderText()}, then N)`}
+                  onClick={model.onNewDraft}
+                />
+              )}
               <span className="inkcap-menu-slot" ref={setMenuSlot} />
             </div>
           </div>
@@ -1084,5 +1110,126 @@ function UnsavedDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * A phone has room for one name: the open file's, whole, on a button that
+ * lists every open file and diff, with New draft and Close beside them.
+ */
+function FileSwitcher({
+  tabs,
+  diffs,
+  active,
+  activeDiff,
+  onActivate,
+  onActivateDiff,
+  onClose,
+  onCloseDiff,
+  onNewDraft,
+}: {
+  tabs: readonly Tab[];
+  diffs: readonly string[];
+  active: Tab["tabKey"] | null;
+  activeDiff: string | null;
+  onActivate: (tab: Tab) => void;
+  onActivateDiff: (path: string) => void;
+  onClose: (tab: Tab) => void;
+  onCloseDiff: (path: string) => void;
+  onNewDraft: () => void;
+}): React.JSX.Element {
+  const open = tabs.find((tab) => tab.tabKey === active);
+  const name =
+    activeDiff !== null
+      ? (activeDiff.split("/").at(-1) ?? activeDiff)
+      : (open?.path.split("/").at(-1) ?? "");
+  const count = tabs.length + diffs.length;
+  const unsaved = open?.dirty === true && activeDiff === null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            size="sm"
+            variant="ghost"
+            className="inkcap-file-switcher"
+            // The full path, as the tab it stands in for carries it.
+            title={
+              activeDiff !== null
+                ? `Changes to ${activeDiff}`
+                : open?.connection?.source
+                  ? `${open.path} · ${open.connection.source.label}`
+                  : open?.path
+            }
+            aria-label={`${name}${activeDiff !== null ? " (changes)" : ""}${unsaved ? ", unsaved" : ""}, ${String(count)} open ${count === 1 ? "file" : "files"}`}
+          >
+            {activeDiff !== null ? (
+              <FileDiff aria-hidden="true" />
+            ) : (
+              <FileCode2 aria-hidden="true" />
+            )}
+            <span className="inkcap-file-switcher-name">{name}</span>
+            {activeDiff !== null ? (
+              <span className="inkcap-file-switcher-note">(changes)</span>
+            ) : null}
+            {unsaved ? (
+              <span className="inkcap-dirty" aria-hidden="true" />
+            ) : null}
+            {count > 1 ? <CountBadge count={count} aria-hidden="true" /> : null}
+            <ChevronDown aria-hidden="true" />
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="start" className="inkcap-file-switcher-menu">
+        {/* Choosing the open file is one-of-many, but Caps has no menu radio
+            items yet, so checkbox items mark the open one. */}
+        {tabs.map((tab) => (
+          <DropdownMenuCheckboxItem
+            key={tab.tabKey}
+            closeOnClick
+            checked={activeDiff === null && tab.tabKey === active}
+            // The dot is drawn; the words are what assistive tech reads.
+            aria-label={
+              tab.dirty
+                ? `${tab.path.split("/").at(-1) ?? tab.path}, unsaved`
+                : undefined
+            }
+            onSelect={() => {
+              onActivate(tab);
+            }}
+          >
+            {tab.path.split("/").at(-1)}
+            {tab.dirty ? (
+              <span className="inkcap-dirty" aria-hidden="true" />
+            ) : null}
+          </DropdownMenuCheckboxItem>
+        ))}
+        {diffs.map((path) => (
+          <DropdownMenuCheckboxItem
+            key={`diff:${path}`}
+            closeOnClick
+            checked={activeDiff === path}
+            onSelect={() => {
+              onActivateDiff(path);
+            }}
+          >
+            {path.split("/").at(-1)} (changes)
+          </DropdownMenuCheckboxItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onNewDraft}>
+          <FilePlus2 aria-hidden="true" /> New draft
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => {
+            if (activeDiff !== null) onCloseDiff(activeDiff);
+            else if (open) onClose(open);
+          }}
+        >
+          <X aria-hidden="true" /> Close {name}
+          {activeDiff !== null ? " (changes)" : ""}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

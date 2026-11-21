@@ -1,5 +1,19 @@
 # @fungi.computer/inkcap
 
+## 0.17.0
+
+### Minor Changes
+
+- Changes since 0.16.16:
+
+  - fix(inkcap): the phone file switcher says when a file is unsaved
+  - feat(inkcap): one file switcher on phones
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/caps@0.12.7
+
 ## 0.16.16
 
 ### Patch Changes

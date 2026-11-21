@@ -15,14 +15,19 @@ import "./workbench.css";
 
 export default { title: "Inkcap" } satisfies StoryDefault;
 
+const defaultOpened = ["README.md", "src/garden.ts"];
+
 function Workbench({
   scenario = "workspace",
   narrow = false,
   connected = true,
+  opened = defaultOpened,
 }: {
   scenario?: InkcapScenario;
   narrow?: boolean;
   connected?: boolean;
+  /** Project files open as tabs, in order. */
+  opened?: readonly string[];
 }) {
   const [queryClient] = useState(createQueryClient);
   useEffect(
@@ -80,15 +85,15 @@ function Workbench({
         scenario === "tree-error"
       )
         return;
-      await fixture.open(`${projectPath}/README.md`);
-      if (lifecycle.active) await fixture.open(`${projectPath}/src/garden.ts`);
+      for (const path of opened)
+        if (lifecycle.active) await fixture.open(`${projectPath}/${path}`);
     })().catch((cause: unknown) => {
       if (lifecycle.active) setNotice(String(cause));
     });
     return () => {
       lifecycle.active = false;
     };
-  }, [fixture, scenario, connected]);
+  }, [fixture, scenario, connected, opened]);
   return (
     <div className="inkcap-study" data-narrow={narrow}>
       <div className="inkcap-study-note">
@@ -212,6 +217,11 @@ export const NoComputerSelected = () => (
 export const Narrow = () => <Workbench narrow />;
 export const Changes = () => <Workbench scenario="changes" />;
 export const ChangesNarrow = () => <Workbench scenario="changes" narrow />;
+const crowded = ["README.md", "src/garden.ts", "src/notes.md", "package.json"];
+/** Four open files: open a diff beside them to crowd the tab strip. */
+export const ChangesCrowded = () => (
+  <Workbench scenario="changes" opened={crowded} />
+);
 export const ChangesEmpty = () => <Workbench scenario="changes-empty" />;
 export const ChangesUnavailable = () => <Workbench scenario="changes-error" />;
 
