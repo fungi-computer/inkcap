@@ -1,5 +1,23 @@
 # @fungi.computer/inkcap
 
+## 0.18.2
+
+### Patch Changes
+
+- Changes since 0.18.1:
+
+  - fix(agar): distinguish unsupported host features from permission denials
+  - fix(inkcap): retain folder creation causes through refusal rows
+  - fix(oyster): sign the owner in with a revocable server-side session
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.27.2
+  - @fungi.computer/caps@0.12.9
+  - @fungi.computer/computer-contract@0.6.4
+  - @fungi.computer/nacre@0.9.3
+
 ## 0.18.1
 
 ### Patch Changes

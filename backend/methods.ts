@@ -136,7 +136,7 @@ function parentFolder(path: string) {
 function parentNotFound(path: string) {
   return {
     error: "parent_not_found" as const,
-    message: `The folder ${parentFolder(path)} does not exist and could not be created. Save into an existing folder (for example /notes.md at the top level), or list folders with listFiles.`,
+    message: `The folder ${parentFolder(path)} does not exist and could not be created. Save into an existing folder (for example /workspace/notes.md at the top level), or list folders with listFiles.`,
   };
 }
 function fileGone(path: string) {
@@ -257,7 +257,7 @@ export const appBackend = defineAppBackend({
     }),
     writeFile: defineAppMethod({
       description:
-        "Write UTF-8 text on the attached Computer. A missing folder is created first; if it cannot be created the write is refused as parent_not_found, and the path is on the Computer, not the host machine. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
+        "Write UTF-8 text on the attached Computer. Missing parent folders are created first; a folder-creation refusal keeps its cause. Paths are on the Computer, not the host machine. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
       effect: "write",
       label: "Save a file on your Computer",
       requires: ["computer.writeFile"],
@@ -272,8 +272,8 @@ export const appBackend = defineAppBackend({
                 id: "refused",
                 title: "Inkcap could not write the file",
                 detail:
-                  output.error === "parent_not_found"
-                    ? "That folder does not exist on the Computer"
+                  "message" in output
+                    ? output.message
                     : computerRefusalMessage(output.error),
                 tone: "error",
               }
@@ -319,7 +319,8 @@ export const appBackend = defineAppBackend({
             absent,
           ),
         );
-        return "error" in made ? absent : await attempt();
+        if ("error" in made) return made.error === "not_found" ? absent : made;
+        return await attempt();
       },
     }),
   },
