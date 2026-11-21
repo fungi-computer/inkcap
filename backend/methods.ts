@@ -180,6 +180,7 @@ export const appBackend = defineAppBackend({
     "documents.opened": defineAppMethod({
       description: "Record a successfully opened foreground Computer document",
       effect: "write",
+      label: "Note that a document was opened",
       requires: ["computer.readFile", "app.storage"],
       input: documentIdentitySchema,
       output: z.union([documentRecordedSchema, documentActivityRefusalSchema]),
@@ -189,6 +190,7 @@ export const appBackend = defineAppBackend({
     "documents.edited": defineAppMethod({
       description: "Record an accepted Computer document save",
       effect: "write",
+      label: "Note that a document was saved",
       requires: ["computer.writeFile", "app.storage"],
       input: documentIdentitySchema,
       output: z.union([documentRecordedSchema, documentActivityRefusalSchema]),
@@ -257,6 +259,7 @@ export const appBackend = defineAppBackend({
       description:
         "Write UTF-8 text on the attached Computer. A missing folder is created first; if it cannot be created the write is refused as parent_not_found, and the path is on the Computer, not the host machine. Supply expectedContent for a compare-and-swap; combined content is limited to 48 KiB. The host owns attribution and the attachment write budget.",
       effect: "write",
+      label: "Save a file on your Computer",
       requires: ["computer.writeFile"],
       input: writeInput,
       output: writeReply,

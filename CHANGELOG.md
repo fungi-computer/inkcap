@@ -1,5 +1,20 @@
 # @fungi.computer/inkcap
 
+## 0.18.0
+
+### Minor Changes
+
+- Changes since 0.17.1:
+
+  - feat(agar): approval cards read a method's own short label
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/agar@0.27.0
+  - @fungi.computer/nacre@0.9.1
+  - @fungi.computer/computer-contract@0.6.2
+
 ## 0.17.1
 
 ### Patch Changes
