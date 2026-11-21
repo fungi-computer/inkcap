@@ -1,3 +1,4 @@
+import { failureMessage } from "@fungi.computer/agar/errors";
 import { documentIdentitySchema } from "./document-activity-contract.js";
 import * as Redacted from "effect/Redacted";
 import { recordDocumentActivity } from "./document-activity.js";
@@ -785,7 +786,9 @@ export function useInkcapWorkbench({
       }
       void app.ui.requestComputerChoice().catch((cause: unknown) => {
         console.error("Inkcap Computer choice failed", Redacted.make(cause));
-        report("The Computer picker could not be opened. Try again.");
+        report(
+          failureMessage("The Computer picker could not be opened", cause),
+        );
       });
     },
     onOpenFile: (path) => {
