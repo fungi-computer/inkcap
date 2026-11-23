@@ -1,5 +1,22 @@
 # @fungi.computer/inkcap
 
+## 0.19.0
+
+### Minor Changes
+
+- Changes since 0.18.8:
+
+  - fix(inkcap): show an open file's whole path on hover in the file menus
+  - feat(inkcap): choose the open file with radio items
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @fungi.computer/agar@0.29.0
+  - @fungi.computer/caps@0.14.0
+  - @fungi.computer/nacre@0.9.10
+
 ## 0.18.8
 
 ### Patch Changes

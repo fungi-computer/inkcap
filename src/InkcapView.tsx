@@ -37,9 +37,10 @@ import { IconButton } from "@fungi.computer/caps/components/icon-button";
 import { Alert } from "@fungi.computer/caps/components/alert";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@fungi.computer/caps/components/dropdown-menu";
@@ -617,33 +618,41 @@ export function InkcapView({
                     }
                   />
                   <DropdownMenuContent align="end">
-                    {model.tabs.map((tab) => (
-                      <DropdownMenuCheckboxItem
-                        key={tab.tabKey}
-                        closeOnClick
-                        checked={
-                          activeDiff === null && tab.tabKey === model.active
-                        }
-                        onSelect={() => {
-                          setActiveDiff(null);
-                          model.onActivate(tab.tabKey);
-                        }}
-                      >
-                        {tab.path.split("/").at(-1)}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                    {diffs.map((path) => (
-                      <DropdownMenuCheckboxItem
-                        key={`diff:${path}`}
-                        closeOnClick
-                        checked={activeDiff === path}
-                        onSelect={() => {
-                          setActiveDiff(path);
-                        }}
-                      >
-                        {path.split("/").at(-1)} (changes)
-                      </DropdownMenuCheckboxItem>
-                    ))}
+                    <DropdownMenuRadioGroup
+                      value={
+                        activeDiff !== null
+                          ? `diff:${activeDiff}`
+                          : `tab:${String(model.active)}`
+                      }
+                    >
+                      {model.tabs.map((tab) => (
+                        <DropdownMenuRadioItem
+                          key={tab.tabKey}
+                          value={`tab:${String(tab.tabKey)}`}
+                          title={tab.path}
+                          closeOnClick
+                          onSelect={() => {
+                            setActiveDiff(null);
+                            model.onActivate(tab.tabKey);
+                          }}
+                        >
+                          {tab.path.split("/").at(-1)}
+                        </DropdownMenuRadioItem>
+                      ))}
+                      {diffs.map((path) => (
+                        <DropdownMenuRadioItem
+                          key={`diff:${path}`}
+                          value={`diff:${path}`}
+                          title={`Changes to ${path}`}
+                          closeOnClick
+                          onSelect={() => {
+                            setActiveDiff(path);
+                          }}
+                        >
+                          {path.split("/").at(-1)} (changes)
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
@@ -1181,41 +1190,47 @@ function FileSwitcher({
         }
       />
       <DropdownMenuContent align="start" className="inkcap-file-switcher-menu">
-        {/* Choosing the open file is one-of-many, but Caps has no menu radio
-            items yet, so checkbox items mark the open one. */}
-        {tabs.map((tab) => (
-          <DropdownMenuCheckboxItem
-            key={tab.tabKey}
-            closeOnClick
-            checked={activeDiff === null && tab.tabKey === active}
-            // The dot is drawn; the words are what assistive tech reads.
-            aria-label={
-              tab.dirty
-                ? `${tab.path.split("/").at(-1) ?? tab.path}, unsaved`
-                : undefined
-            }
-            onSelect={() => {
-              onActivate(tab);
-            }}
-          >
-            {tab.path.split("/").at(-1)}
-            {tab.dirty ? (
-              <span className="inkcap-dirty" aria-hidden="true" />
-            ) : null}
-          </DropdownMenuCheckboxItem>
-        ))}
-        {diffs.map((path) => (
-          <DropdownMenuCheckboxItem
-            key={`diff:${path}`}
-            closeOnClick
-            checked={activeDiff === path}
-            onSelect={() => {
-              onActivateDiff(path);
-            }}
-          >
-            {path.split("/").at(-1)} (changes)
-          </DropdownMenuCheckboxItem>
-        ))}
+        <DropdownMenuRadioGroup
+          value={
+            activeDiff !== null ? `diff:${activeDiff}` : `tab:${String(active)}`
+          }
+        >
+          {tabs.map((tab) => (
+            <DropdownMenuRadioItem
+              key={tab.tabKey}
+              value={`tab:${String(tab.tabKey)}`}
+              title={tab.path}
+              closeOnClick
+              // The dot is drawn; the words are what assistive tech reads.
+              aria-label={
+                tab.dirty
+                  ? `${tab.path.split("/").at(-1) ?? tab.path}, unsaved`
+                  : undefined
+              }
+              onSelect={() => {
+                onActivate(tab);
+              }}
+            >
+              {tab.path.split("/").at(-1)}
+              {tab.dirty ? (
+                <span className="inkcap-dirty" aria-hidden="true" />
+              ) : null}
+            </DropdownMenuRadioItem>
+          ))}
+          {diffs.map((path) => (
+            <DropdownMenuRadioItem
+              key={`diff:${path}`}
+              value={`diff:${path}`}
+              title={`Changes to ${path}`}
+              closeOnClick
+              onSelect={() => {
+                onActivateDiff(path);
+              }}
+            >
+              {path.split("/").at(-1)} (changes)
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onNewDraft}>
           <FilePlus2 aria-hidden="true" /> New draft
