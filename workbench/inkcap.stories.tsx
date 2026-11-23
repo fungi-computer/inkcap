@@ -10,7 +10,7 @@ import {
   projectPath,
   type InkcapScenario,
 } from "./fixtures.js";
-import { Toaster } from "@fungi.computer/caps/components/toaster";
+import { Toaster, toast } from "@fungi.computer/caps/components/toaster";
 import "./workbench.css";
 
 export default { title: "Inkcap" } satisfies StoryDefault;
@@ -164,6 +164,14 @@ function Workbench({
             Finish save
           </button>
         ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            toast("Saved garden.ts", { duration: Infinity });
+          }}
+        >
+          Show notice
+        </button>
         <output>{notice}</output>
       </div>
       {scenario === "dirty" ? (

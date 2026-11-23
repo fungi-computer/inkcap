@@ -1,3 +1,4 @@
+import { useAppHeaderRef } from "@fungi.computer/caps/components/app-header";
 import type { TargetCheck } from "./path-exists.js";
 import { useQuery } from "@tanstack/react-query";
 import { describeAppError } from "@fungi.computer/agar/errors";
@@ -140,6 +141,7 @@ export function InkcapView({
 }: {
   model: InkcapViewModel;
 }): React.JSX.Element {
+  const headerRef = useAppHeaderRef();
   const [explorerChoice, setExplorerChoice] = useState<boolean | null>(null);
   const [narrow, setNarrow] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
@@ -466,7 +468,7 @@ export function InkcapView({
             if (tab) model.onActivate(tab.tabKey);
           }}
         >
-          <div className="inkcap-tab-bar">
+          <div className="inkcap-tab-bar" ref={headerRef}>
             {narrow ? (
               <Dialog open={filesOpen} onOpenChange={setFilesOpen}>
                 <DialogTrigger

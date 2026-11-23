@@ -1,5 +1,18 @@
 # @fungi.computer/inkcap
 
+## 0.19.2
+
+### Patch Changes
+
+- Changes since 0.19.1:
+
+  - fix(caps): register app headers for toast clearance
+  - fix(caps): measure the app header for toast clearance
+  - fix(caps): open toasts below the app header
+
+- Updated dependencies
+  - @fungi.computer/caps@0.14.1
+
 ## 0.19.1
 
 ### Patch Changes
