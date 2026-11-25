@@ -1,5 +1,12 @@
 # @fungi.computer/inkcap
 
+## 0.19.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @fungi.computer/computer-contract@0.6.10
+
 ## 0.19.6
 
 ### Patch Changes
