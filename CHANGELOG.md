@@ -1,5 +1,13 @@
 # @fungi.computer/inkcap
 
+## 0.19.12
+
+### Patch Changes
+
+- @fungi.computer/agar@0.29.4
+  - @fungi.computer/nacre@0.9.17
+  - @fungi.computer/computer-contract@0.6.13
+
 ## 0.19.11
 
 ### Patch Changes
